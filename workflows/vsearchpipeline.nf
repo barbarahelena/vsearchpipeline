@@ -210,7 +210,7 @@ workflow VSEARCHPIPELINE {
         ch_versions = ch_versions.mix(MAFFT.out.versions)
 
         //
-        // MODULE: Build tree with FastTree or IQTree
+        // MODULE: Build tree with FastTree
         //
             FASTTREE (
                 MAFFT.out.msa

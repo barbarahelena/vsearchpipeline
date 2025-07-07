@@ -1,5 +1,6 @@
 process FASTTREE {
     label 'process_single_medium'
+    label 'error_retry'
 
     conda "bioconda::fasttree=2.1.11"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?

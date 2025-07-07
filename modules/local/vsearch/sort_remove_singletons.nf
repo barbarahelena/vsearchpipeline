@@ -1,6 +1,7 @@
 process VSEARCH_SORT_REMOVE_SINGLETONS {
     label 'process_single_low'
     label 'vsearch'
+    label 'error_retry'
 
     input:
     path(reads)
@@ -17,12 +18,12 @@ process VSEARCH_SORT_REMOVE_SINGLETONS {
     def args = task.ext.args ?: ''
     """
     vsearch --sortbysize $reads \
-    --threads $task.cpus \
-    --sizein \
-    --sizeout \
-    --fasta_width $fasta_width \
-    --minsize $minsize \
-    --output asvs_nonsingle.fasta
+        --threads $task.cpus \
+        --sizein \
+        --sizeout \
+        --fasta_width $fasta_width \
+        --minsize $minsize \
+        --output asvs_nonsingle.fasta
     """
 
     stub:

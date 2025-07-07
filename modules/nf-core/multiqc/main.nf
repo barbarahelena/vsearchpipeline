@@ -1,7 +1,10 @@
 process MULTIQC {
     label 'process_single'
     label 'error_retry'
+<<<<<<< HEAD
     time '1.h'
+=======
+>>>>>>> cfde4d8 (overdue commit)
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
