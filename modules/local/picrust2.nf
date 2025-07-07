@@ -8,7 +8,6 @@ process PICRUST2 {
 
     output:
     path("picrust_output/*") , emit: outfolder
-    path("*_descrip.tsv"), emit: pathways
     path "versions.yml"  , emit: versions
 
     when:
@@ -18,10 +17,7 @@ process PICRUST2 {
     def args = task.ext.args ?: ''
     
     """
-    picrust2_pipeline.py $args -s $asvfasta -i $asvtab -o picrust_output -p ${task.cpus} --in_traits EC,KO --verbose
-    add_descriptions.py -i picrust_output/EC_metagenome_out/pred_metagenome_unstrat.tsv.gz -m EC -o EC_pred_metagenome_unstrat_descrip.tsv
-    add_descriptions.py -i picrust_output/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz -m KO -o KO_pred_metagenome_unstrat_descrip.tsv
-    add_descriptions.py -i picrust_output/pathways_out/path_abun_unstrat.tsv.gz -m METACYC -o METACYC_path_abun_unstrat_descrip.tsv
+    picrust2_pipeline.py $args -s $asvfasta -i $asvtab -o picrust_output -p ${task.cpus} --in_traits EC,KO,METACYC --verbose
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
