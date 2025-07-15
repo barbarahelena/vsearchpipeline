@@ -1,6 +1,7 @@
 process PICRUST2 {
-    label 'process_high'
+    label 'process_multi_high'
     label 'picrust2'
+    label 'error_retry'
 
     input:
     path(asvfasta)
@@ -17,7 +18,7 @@ process PICRUST2 {
     def args = task.ext.args ?: ''
     
     """
-    picrust2_pipeline.py $args -s $asvfasta -i $asvtab -o picrust_output -p ${task.cpus} --in_traits EC,KO,METACYC --verbose
+    picrust2_pipeline.py $args -s $asvfasta -i $asvtab -o picrust_output -p ${task.cpus} --in_traits EC,KO --verbose
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

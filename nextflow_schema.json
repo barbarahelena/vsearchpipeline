@@ -408,6 +408,20 @@
             },
             "fa_icon": "fas fa-th-list"
         },
+        "picrust2_options": {
+            "title": "Picrust2 options",
+            "type": "object",
+            "description": "Options for picrust2 process",
+            "default": "",
+            "properties": {
+                "picrust2_stratification": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Whether to stratify or not"
+                }
+            },
+            "fa_icon": "fas fa-th-list"
+        },
         "skip_options": {
             "title": "Skip options",
             "type": "object",
@@ -469,6 +483,9 @@
         },
         {
             "$ref": "#/definitions/phyloseq_options"
+        },
+        {
+            "$ref": "#/definitions/picrust2_options"
         },
         {
             "$ref": "#/definitions/skip_options"
