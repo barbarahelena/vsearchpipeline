@@ -1,29 +1,36 @@
 //
-// Check primersheet
+// Check primersheet and emit primer sequences
 //
-
-include { PRIMERSHEET_CHECK } from '../../modules/local/primersheet_check'
 
 workflow PRIMERS_CHECK {
     take:
-    primersheet
+    primersheet // path: /path/to/primers.csv
 
-    main:    
-    PRIMERSHEET_CHECK ( primersheet )
-        .csv
-        .splitCsv ( header:true, sep:',' )
-        .map { create_primer_channel(it) }
+    main:
+    primersheet
+        .map { csv ->
+            def rows = csv.splitCsv(header: true, strip: true)
+            if (rows.size() != 1) {
+                error "Primersheet must contain exactly one row of primers, found ${rows.size()} rows."
+            }
+            def row = rows[0]
+            // Accept both 'forward_primer'/'reverse_primer' and 'fwd_primer'/'rev_primer'
+            def fwd = row['forward_primer'] ?: row['fwd_primer']
+            def rev = row['reverse_primer'] ?: row['rev_primer']
+            if (!fwd || !rev) {
+                error "Primersheet must have columns 'forward_primer' and 'reverse_primer' (or 'fwd_primer'/'rev_primer')."
+            }
+            if (!fwd.matches('[ACGTURYSWKMBDHVNacgturyswkmbdhvn]+')) {
+                error "Forward primer '${fwd}' is not a valid IUPAC DNA sequence."
+            }
+            if (!rev.matches('[ACGTURYSWKMBDHVNacgturyswkmbdhvn]+')) {
+                error "Reverse primer '${rev}' is not a valid IUPAC DNA sequence."
+            }
+            return [ forward: fwd.trim(), reverse: rev.trim() ]
+        }
         .set { primers }
 
     emit:
-    primers                                   // channel: [ forward_primer, reverse_primer ]
-    versions = PRIMERSHEET_CHECK.out.versions // channel: [ versions.yml ]
+    primers // channel: [ val(map with forward/reverse keys) ]
 }
 
-def create_primer_channel(LinkedHashMap row) {
-    def primer = [:]
-    primer.forward         = row.forward_primer
-    primer.reverse         = row.reverse_primer
-
-    return primer
-}
