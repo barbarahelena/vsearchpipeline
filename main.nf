@@ -42,7 +42,7 @@ WorkflowMain.initialise(workflow, params, log)
 include { VSEARCHPIPELINE } from './workflows/vsearchpipeline'
 
 //
-// WORKFLOW: Run main nf-core/vsearchpipeline analysis pipeline
+// WORKFLOW: Run main vsearchpipeline analysis pipeline
 //
 
 workflow FLOW {

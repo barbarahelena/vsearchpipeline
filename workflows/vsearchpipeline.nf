@@ -96,6 +96,9 @@ workflow VSEARCHPIPELINE {
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
     //
     if(!params.skip_primers){
+        if (!params.primers) {
+            error "params.primers is not set. Please provide a primers file with --primers or set --skip_primers true."
+        }
         PRIMERS_CHECK (
             file(params.primers)
         )
