@@ -1,4 +1,4 @@
 sample,fastq_1,fastq_2,nucl_acid_conc
-SAMPLE_PAIRED_END,/path/to/fastq/files/AEG588A1_S1_L002_R1_001.fastq.gz,/path/to/fastq/files/AEG588A1_S1_L002_R2_001.fastq.gz,15.3
-SAMPLE_SINGLE_END,/path/to/fastq/files/AEG588A4_S4_L003_R1_001.fastq.gz,,
-NEGCON_1,/path/to/fastq/files/NEG1_R1_001.fastq.gz,/path/to/fastq/files/NEG1_R2_001.fastq.gz,0.1
+SAMPLE_PAIRED_END,/absolute/path/to/AEG588A1_S1_L002_R1_001.fastq.gz,/absolute/path/to/AEG588A1_S1_L002_R2_001.fastq.gz,15.3
+SAMPLE_SINGLE_END,/absolute/path/to/AEG588A4_S4_L003_R1_001.fastq.gz,,
+NEGCON_1,/absolute/path/to/NEG1_R1_001.fastq.gz,/absolute/path/to/NEG1_R2_001.fastq.gz,0.1
