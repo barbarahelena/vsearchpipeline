@@ -9,15 +9,19 @@
         "properties": {
             "sample": {
                 "type": "string",
+                "meta": ["id"],
                 "pattern": "^\\S+$",
                 "errorMessage": "Sample name must be provided and cannot contain spaces"
             },
             "fastq_1": {
                 "type": "string",
+                "format": "file-path",
                 "pattern": "^\\S+\\.f(ast)?q\\.gz$",
                 "errorMessage": "FastQ file for reads 1 must be provided, cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
             },
             "fastq_2": {
+                "type": "string",
+                "format": "file-path",
                 "errorMessage": "FastQ file for reads 2 cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'",
                 "anyOf": [
                     {
@@ -32,6 +36,7 @@
             },
             "nucl_acid_conc": {
                 "type": "number",
+                "meta": ["nucl_acid_conc"],
                 "errorMessage": "Optional: DNA/RNA concentration used for frequency-based decontam (e.g. from Qubit). Must be a positive number.",
                 "minimum": 0
             }

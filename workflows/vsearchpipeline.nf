@@ -91,19 +91,17 @@ workflow VSEARCHPIPELINE {
     INPUT_CHECK (
         file(params.input)
     )
-    ch_versions = ch_versions.mix(INPUT_CHECK.out.versions)
     //
-    // SUBWORKFLOW: Read in samplesheet, validate and stage input files
+    // SUBWORKFLOW: Read and validate primersheet
     //
     if(!params.skip_primers){
         if (!params.primers) {
             error "params.primers is not set. Please provide a primers file with --primers or set --skip_primers true."
         }
         PRIMERS_CHECK (
-            file(params.primers)
+            channel.fromPath(params.primers, checkIfExists: true)
         )
         ch_primers = PRIMERS_CHECK.out.primers.first()
-        ch_versions = ch_versions.mix(PRIMERS_CHECK.out.versions)
     }
     //
     // MODULE: Run FastQC
