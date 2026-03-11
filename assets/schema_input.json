@@ -29,6 +29,11 @@
                         "maxLength": 0
                     }
                 ]
+            },
+            "nucl_acid_conc": {
+                "type": "number",
+                "errorMessage": "Optional: DNA/RNA concentration used for frequency-based decontam (e.g. from Qubit). Must be a positive number.",
+                "minimum": 0
             }
         },
         "required": ["sample", "fastq_1"]

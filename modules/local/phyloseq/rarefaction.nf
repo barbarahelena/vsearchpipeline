@@ -29,6 +29,15 @@ process PHYLOSEQ_RAREFACTION {
     numbers_before_rarefaction <- paste0('The phyloseq object has ', nsamples(phylo), ' samples and ',
                  ntaxa(phylo), ' taxa. \n')
     print(numbers_before_rarefaction)
+
+    ## Remove any remaining negative/blank control samples before rarefaction
+    ctrl_samples <- sample_names(phylo)[grepl("NEGCON|^SB", sample_names(phylo))]
+    if (length(ctrl_samples) > 0) {
+        cat(paste0("Removing ", length(ctrl_samples), " control sample(s) before rarefaction: ",
+                   paste(ctrl_samples, collapse = ", "), "\n"))
+        phylo <- prune_samples(!sample_names(phylo) %in% ctrl_samples, phylo)
+        cat(paste0("After control removal: ", nsamples(phylo), " samples.\n"))
+    }
     
     ## Calculated rarefaction level
     rarelevel <- mean(colSums(phylo@otu_table)) - 3*sd(rowSums(phylo@otu_table))

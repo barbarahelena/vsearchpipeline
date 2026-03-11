@@ -33,13 +33,62 @@ TREATMENT_REP3,AEG588A6_S6_L003_R1_001.fastq.gz,AEG588A6_S6_L003_R2_001.fastq.gz
 TREATMENT_REP3,AEG588A6_S6_L004_R1_001.fastq.gz,AEG588A6_S6_L004_R2_001.fastq.gz
 ```
 
-| Column    | Description                                                                                                                                                                            |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Column           | Description                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
 | `sample`  | Custom sample name. This entry will be identical for multiple sequencing libraries/runs from the same sample. Spaces in sample names are automatically converted to underscores (`_`). |
 | `fastq_1` | Full path to FastQ file for Illumina short reads 1. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
 | `fastq_2` | Full path to FastQ file for Illumina short reads 2. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
+| `nucl_acid_conc` | _(Optional)_ DNA/RNA concentration of the sample (e.g. measured by Qubit). Required for frequency-based decontam. Leave empty for negative controls and samples without a measurement. |
 
 An [example samplesheet](../testdata/Samplesheet.csv) has been provided with the pipeline.
+
+## Decontam
+
+If your experiment includes **negative (extraction/PCR) controls**, you can run [`decontam`](https://benjjneb.github.io/decontam/) to identify and remove contaminant ASVs before downstream analyses.
+
+### Enabling decontam
+
+```bash
+--run_decontam
+```
+
+### Requirements
+
+| Requirement | Details |
+|---|---|
+| **Negative control samples** | Sample names must contain `NEGCON` (e.g. `NEGCON_1`, `Sample_NEGCON`). These are used for prevalence-based decontam. |
+| **DNA concentration** _(optional)_ | Add a `nucl_acid_conc` column to your samplesheet (e.g. Qubit ng/µL). This enables frequency-based decontam in addition to prevalence-based. The original samplesheet file (`--input`) is passed directly to the decontam process and the column is read from there. Rows with missing or zero concentration are excluded from frequency-based decontam only — they still contribute to prevalence-based decontam. If the column is absent entirely, only prevalence-based decontam runs. |
+
+Both methods are run if both are available; each is run individually if only one data source is present. If neither negative controls nor concentration data are found, the process saves the unmodified phyloseq and writes a warning to the report.
+
+> [!NOTE]
+> Prevalence-based decontam (using `NEGCON` samples) runs independently of concentration data. If you have negative controls but no DNA concentrations — or only partial concentration data — decontam will still run using the prevalence method.
+
+### Decontam methods
+
+1. **Frequency-based** (`isContaminant(method = "frequency", conc = "nucl_acid_conc")`): Identifies ASVs whose abundance is inversely correlated with DNA concentration — a hallmark of contamination.
+2. **Prevalence-based** (`isContaminant(method = "prevalence", neg = "Ctrl")`): Identifies ASVs that are more prevalent in negative controls than in true samples.
+
+The union of both methods is removed.
+
+### Control sample removal
+
+After contaminant ASVs are removed, all samples whose names match `NEGCON` or start with `SB` are removed from the phyloseq object. This also happens automatically in the **rarefaction step** as a safeguard, even when `--run_decontam` is not set.
+
+### Output
+
+Results are saved to `<outdir>/phyloseq/decontam/`:
+
+| File | Description |
+|---|---|
+| `phyloseq_decontam.RDS` | Cleaned phyloseq object (contaminants and control samples removed) |
+| `decontam_contaminants.csv` | List of ASVs identified as contaminants |
+| `decontam_prev_plot.pdf` | Prevalence plot (negative controls vs. true samples) |
+| `decontam_report.txt` | Summary report of the decontam run |
+
+### Effect on rarefaction
+
+When `--run_decontam` is enabled, the **rarefaction step uses the decontam output** (`phyloseq_decontam.RDS`) as its input instead of the complete phyloseq object. The complete (pre-decontam) phyloseq object is always saved separately.
 
 ## Primersheet input
 

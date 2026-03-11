@@ -52,6 +52,7 @@ include { PICRUST2 }                                                 from '../mo
 include { PHYLOSEQ_MAKEOBJECT as PHYLOSEQ_COMPLETE_MAKEOBJECT }     from '../modules/local/phyloseq/makeobject'
 include { PHYLOSEQ_FIXTAXONOMY as PHYLOSEQ_COMPLETE_FIXTAX }        from '../modules/local/phyloseq/fixtaxonomy'
 include { PHYLOSEQ_METRICS as PHYLOSEQ_COMPLETE_METRICS }           from '../modules/local/phyloseq/metrics'
+include { PHYLOSEQ_DECONTAM }                                        from '../modules/local/phyloseq/decontam'
 include { PHYLOSEQ_RAREFACTION as PHYLOSEQ_RAREFIED }               from '../modules/local/phyloseq/rarefaction'
 include { PHYLOSEQ_METRICS as PHYLOSEQ_RAREFIED_METRICS }           from '../modules/local/phyloseq/metrics'
 include { PHYLOSEQ_FIXTAXONOMY as PHYLOSEQ_RAREFIED_FIXTAX }        from '../modules/local/phyloseq/fixtaxonomy'
@@ -265,6 +266,21 @@ workflow VSEARCHPIPELINE {
     ch_complete = true
 
     //
+    // MODULE: Decontam (optional) — run before rarefaction
+    //
+    if (params.run_decontam) {
+        PHYLOSEQ_DECONTAM (
+            ch_phyloseq,
+            file(params.input)
+        )
+        ch_versions = ch_versions.mix(PHYLOSEQ_DECONTAM.out.versions)
+        // Use decontam output as basis for rarefaction and downstream steps
+        ch_phyloseq_for_rarefaction = PHYLOSEQ_DECONTAM.out.phyloseq
+    } else {
+        ch_phyloseq_for_rarefaction = ch_phyloseq
+    }
+
+    //
     // MODULE: Fix taxonomy
     //
     if (!params.skip_fixtaxonomy) {
@@ -288,10 +304,10 @@ workflow VSEARCHPIPELINE {
     if (!params.skip_rarefaction) {
         ch_complete_new = false
         //
-        // MODULE: Rarefaction
+        // MODULE: Rarefaction — uses decontam output if run_decontam, else complete phyloseq
         //
         PHYLOSEQ_RAREFIED (
-            ch_phyloseq,
+            ch_phyloseq_for_rarefaction,
             params.rarelevel,
         )
         

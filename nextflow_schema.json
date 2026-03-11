@@ -404,6 +404,12 @@
                     "type": "integer",
                     "default": 0,
                     "description": "Rarefaction level (not used if skip_rarefaction is not set at true)"
+                },
+                "run_decontam": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Run decontam to identify and remove contaminant ASVs. Requires NEGCON-labelled negative control samples and/or a nucl_acid_conc column in the samplesheet.",
+                    "fa_icon": "fas fa-filter"
                 }
             },
             "fa_icon": "fas fa-th-list"
