@@ -36,11 +36,12 @@ process VSEARCH_USEARCHGLOBAL {
     stub:
     def args = task.ext.args ?: ''
     """
-    touch asv_counts.txt
+    touch all.concat.fasta
+    touch count_table.txt
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        : \$(echo \$(vsearch --version 2>&1) | sed 's/^.*vsearch //; s/Using.*\$//' ))
+        vsearch: \$(vsearch --version 2>&1 | head -n 1 | sed 's/vsearch //; s/,.*//')
     END_VERSIONS
     """
 }

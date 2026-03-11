@@ -37,24 +37,18 @@ process VSEARCH_FASTQFILTER {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        : \$(echo \$(vsearch --version 2>&1))
+        vsearch: \$(vsearch --version 2>&1 | head -n 1 | sed 's/vsearch //; s/,.*//')
     END_VERSIONS
     """
 
     stub:
-    def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    def filtered = "${prefix}.filtered.fasta"
-    def min = $minlength != 0 ? "--fastq_minlen ${minlength}" : ""
-    def max = $maxlength != 0 ? "--fastq_maxlen ${maxlength}" : ""
-    def maxns = $maxns ? "--fastq_maxns ${maxns}" : ""
-
+    def stub_prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch "${prefix}.filtered.fasta"
+    touch "${stub_prefix}.filtered.fastq"
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        : \$(echo \$(vsearch --version 2>&1))
+        vsearch: \$(vsearch --version 2>&1 | head -n 1 | sed 's/vsearch //; s/,.*//')
     END_VERSIONS
     """
 }
