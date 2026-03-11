@@ -1,11 +1,9 @@
 #!/usr/bin/env nextflow
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    nf-core/vsearchpipeline
+    vsearchpipeline
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Github : https://github.com/nf-core/vsearchpipeline
-    Website: https://nf-co.re/vsearchpipeline
-    Slack  : https://nfcore.slack.com/channels/vsearchpipeline
+    Github : https://github.com/barbarahelena/vsearchpipeline
 ----------------------------------------------------------------------------------------
 */
 
@@ -47,7 +45,7 @@ include { VSEARCHPIPELINE } from './workflows/vsearchpipeline'
 // WORKFLOW: Run main nf-core/vsearchpipeline analysis pipeline
 //
 
-workflow NFCORE_VSEARCHPIPELINE {
+workflow FLOW {
     VSEARCHPIPELINE ()
 }
 
@@ -57,7 +55,7 @@ workflow NFCORE_VSEARCHPIPELINE {
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 workflow {
-    NFCORE_VSEARCHPIPELINE ()
+    FLOW ()
 }
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
