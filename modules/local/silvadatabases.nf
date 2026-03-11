@@ -11,26 +11,24 @@ process SILVADATABASES {
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ''
 
     """
-    wget -c https://zenodo.org/records/4587955/files/silva_nr99_v138.1_train_set.fa.gz\\?download\\=1 \\
+    wget -c https://zenodo.org/records/14169026/files/silva_nr99_v138.2_toGenus_trainset.fa.gz?download=1 \\
         -O SILVA_asv_db.fa.gz
-    wget -c https://zenodo.org/records/4587955/files/silva_species_assignment_v138.1.fa.gz\\?download\\=1 \\
+    wget -c https://zenodo.org/records/14169026/files/silva_v138.2_assignSpecies.fa.gz?download=1 \\
         -O SILVA_species_db.fa.gz
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        SILVA: 138.1
+        SILVA: 138.2
     END_VERSIONS
     """
 
     stub:
-    def args = task.ext.args ?: ''
-    
+  
     """
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        SILVA: 138.1
+        SILVA: 138.2
     END_VERSIONS
     """
 }
