@@ -6,9 +6,7 @@ body:
     attributes:
       value: |
         Before you post this issue, please check the documentation:
-
-        - [nf-core website: troubleshooting](https://nf-co.re/usage/troubleshooting)
-        - [nf-core/vsearchpipeline pipeline documentation](https://nf-co.re/vsearchpipeline/usage)
+        - [vsearchpipeline pipeline documentation](https://github.com/barbarahelena/vsearchpipeline/blob/main/docs/usage.md)
 
   - type: textarea
     id: description
