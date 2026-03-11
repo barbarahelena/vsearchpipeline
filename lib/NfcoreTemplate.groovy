@@ -1,5 +1,5 @@
 //
-// This file holds several functions used within the nf-core pipeline template.
+// This file holds several utility functions used within the vsearchpipeline.
 //
 
 import org.yaml.snakeyaml.Yaml
@@ -27,7 +27,7 @@ class NfcoreTemplate {
             log.warn "[$workflow.manifest.name] You are attempting to run the pipeline without any custom configuration!\n\n" +
                     "This will be dependent on your local compute environment but can be achieved via one or more of the following:\n" +
                     "   (1) Using an existing pipeline profile e.g. `-profile docker` or `-profile singularity`\n" +
-                    "   (2) Using an existing nf-core/configs for your Institution e.g. `-profile crick` or `-profile uppmax`\n" +
+                    "   (2) Using an institutional config profile e.g. `-profile crick` or `-profile uppmax`\n" +
                     "   (3) Using your own local custom config e.g. `-c /path/to/your/custom.config`\n\n" +
                     "Please refer to the quick start section and usage docs for the pipeline.\n "
         }
@@ -331,7 +331,7 @@ class NfcoreTemplate {
     }
 
     //
-    // nf-core logo
+    // Pipeline logo / header
     //
     public static String logo(workflow, monochrome_logs) {
         Map colors = logColours(monochrome_logs)
@@ -339,12 +339,15 @@ class NfcoreTemplate {
         String.format(
             """\n
             ${dashedLine(monochrome_logs)}
-                                                    ${colors.green},--.${colors.black}/${colors.green},-.${colors.reset}
-            ${colors.blue}        ___     __   __   __   ___     ${colors.green}/,-._.--~\'${colors.reset}
-            ${colors.blue}  |\\ | |__  __ /  ` /  \\ |__) |__         ${colors.yellow}}  {${colors.reset}
-            ${colors.blue}  | \\| |       \\__, \\__/ |  \\ |___     ${colors.green}\\`-._,-`-,${colors.reset}
-                                                    ${colors.green}`._,._,\'${colors.reset}
-            ${colors.purple}  ${workflow.manifest.name} ${workflow_version}${colors.reset}
+            ${colors.purple} /\$\$    /\$\$                                                  /\$\$       /\$\$\$\$\$\$\$\$\$ /\$\$                        ${colors.reset}
+            ${colors.purple}| \$\$   | \$\$                                                 | \$\$      | \$\$_____/| \$\$                        ${colors.reset}
+            ${colors.purple}| \$\$   | \$\$ /\$\$\$\$\$\$\$  /\$\$\$\$\$\$   /\$\$\$\$\$\$   /\$\$\$\$\$\$   /\$\$\$\$\$\$\$| \$\$\$\$\$\$\$ | \$\$      | \$\$  /\$\$\$\$\$\$ /\$\$  /\$\$  /\$\$${colors.reset}
+            ${colors.purple}|  \$\$ / \$\$//\$\$_____/ /\$\$__  \$\$ |____  \$\$ /\$\$__  \$\$ /\$\$_____/| \$\$__  \$\$| \$\$\$\$\$   | \$\$ /\$\$__  \$\$| \$\$ | \$\$ | \$\$${colors.reset}
+            ${colors.purple} \\  \$\$ \$\$/ |  \$\$\$\$\$\$\$ | \$\$\$\$\$\$\$\$  /\$\$\$\$\$\$\$| \$\$  \\__/| \$\$      | \$\$  \\ \$\$| \$\$__/   | \$\$| \$\$  \\ \$\$| \$\$ | \$\$ | \$\$${colors.reset}
+            ${colors.purple}  \\  \$\$\$/  \\____  \$\$| \$\$_____/ /\$\$__  \$\$| \$\$      | \$\$      | \$\$  | \$\$| \$\$      | \$\$| \$\$  | \$\$| \$\$ | \$\$ | \$\$${colors.reset}
+            ${colors.purple}   \\  \$\$/   /\$\$\$\$\$\$\$/|  \$\$\$\$\$\$\$|  \$\$\$\$\$\$\$| \$\$      |  \$\$\$\$\$\$\$| \$\$  | \$\$| \$\$      | \$\$|  \$\$\$\$\$\$/ |  \$\$\$\$\$/\$\$\$\$/${colors.reset}
+            ${colors.purple}    \\_/   |_______/  \\_______/ \\_______/|__/       \\_______/|__/  |__/|__/      |__/ \\______/   \\_____/\\___/ ${colors.reset}
+            ${colors.dim}  ${workflow_version}${colors.reset}
             ${dashedLine(monochrome_logs)}
             """.stripIndent()
         )

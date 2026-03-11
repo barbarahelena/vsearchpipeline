@@ -1,5 +1,5 @@
 //
-// This file holds several functions specific to the main.nf workflow in the nf-core/vsearchpipeline pipeline
+// This file holds several functions specific to the main.nf workflow in the vsearchpipeline pipeline
 //
 
 import nextflow.Nextflow
@@ -13,8 +13,6 @@ class WorkflowMain {
         return "If you use ${workflow.manifest.name} for your analysis please cite:\n\n" +
             "* VSEARCH pipeline\n" +
             "  https://doi.org/10.5281/zenodo.10076630\n\n" +
-            "* The nf-core framework\n" +
-            "  https://doi.org/10.1038/s41587-020-0439-x\n\n" +
             "* Software dependencies\n" +
             "  https://github.com/barbarahelena/vsearchpipeline/blob/master/CITATIONS.md"
     }
