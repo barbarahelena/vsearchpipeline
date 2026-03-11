@@ -40,22 +40,13 @@ process VSEARCH_FASTQMERGEPAIRS {
         ${minmerge} \\
         ${maxmerge} \\
         ${maxdiffpct} \\
-        ${allowmergestagger} \\
         --fastqout ${merged}
     """
 
     stub:
-    def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    def fwd_reads = reads[0]
-    def rev_reads = reads[1]
-    def merged = "${prefix}.merged.fastq.gz"
-    def allowmergestagger = allowmergestagger ? "--fastq_allowmergestagger" : ''
-    def maxdiffs = $maxdiffs ? "--fastq_maxdiffs ${maxdiffs}" : ''
-    def minmerge = $minlength ? "--fastq_minmergelen ${minlength}" : ''
-    def maxmerge = $maxlength ? "--fastq_maxmergelen ${maxlength}" : ''
-    def maxdiffpct = maxdiffpct != 100 ? "--fastq_maxdiffpct ${maxdiffpct}" : ''
+    def stub_prefix = task.ext.prefix ?: "${meta.id}"
+    def stub_merged = "${stub_prefix}.merged.fastq.gz"
     """
-    touch ${merged}
+    touch ${stub_merged}
     """
 }
