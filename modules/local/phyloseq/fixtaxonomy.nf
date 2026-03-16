@@ -10,7 +10,8 @@ process PHYLOSEQ_FIXTAXONOMY {
     path "taxtable_*.RDS"                                                                                                                      , emit: taxonomy
     path "phylogen_levels_*.csv"                                                                                                               , emit: phylevels
     path "phylogen_levels_top300_*.csv"                                                                                                        , emit: phylevelstop
-    tuple val("${task.process}"), val('phyloseq'), eval("Rscript -e \"cat(as.character(packageVersion('phyloseq')))\""), emit: versions, topic: versions
+    tuple val("${task.process}"), val('R'),          eval('Rscript -e "cat(paste(R.version[c(\'major\',\'minor\')], collapse=\'.\'))"')        , emit: versions_r,          topic: versions
+    tuple val("${task.process}"), val('phyloseq'),   eval('Rscript -e "cat(as.character(packageVersion(\'phyloseq\')))"')                      , emit: versions_phyloseq,   topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -19,7 +20,7 @@ process PHYLOSEQ_FIXTAXONOMY {
     def args = task.ext.args ?: ''
     def postfix = complete ? "complete" : "rarefied"
     """
-    #!/usr/bin/env Rscript
+    Rscript - <<EOF
     library(phyloseq)
 
     ## Open data
@@ -73,6 +74,7 @@ process PHYLOSEQ_FIXTAXONOMY {
     tax\$ASV <- rownames(tax)
 
     saveRDS(tax, file = "taxtable_${postfix}.RDS")
+    EOF
     """
     
     stub:

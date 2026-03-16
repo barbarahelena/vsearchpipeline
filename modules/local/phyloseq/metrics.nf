@@ -15,7 +15,10 @@ process PHYLOSEQ_METRICS {
     path "shannon_index_*.pdf"                                                                                                                 , emit: shannon
     path "species_richness_*.pdf"                                                                                                              , emit: richness
     path "metrics_overview_*.txt"                                                                                                              , emit: metrics
-    tuple val("${task.process}"), val('phyloseq'), eval("Rscript -e \"cat(as.character(packageVersion('phyloseq')))\""), emit: versions, topic: versions
+    tuple val("${task.process}"), val('R'),          eval('Rscript -e "cat(paste(R.version[c(\'major\',\'minor\')], collapse=\'.\'))"')        , emit: versions_r,          topic: versions
+    tuple val("${task.process}"), val('phyloseq'),   eval('Rscript -e "cat(as.character(packageVersion(\'phyloseq\')))"')                      , emit: versions_phyloseq,   topic: versions
+    tuple val("${task.process}"), val('vegan'),      eval('Rscript -e "cat(as.character(packageVersion(\'vegan\')))"')                         , emit: versions_vegan,      topic: versions
+    tuple val("${task.process}"), val('ggplot2'),    eval('Rscript -e "cat(as.character(packageVersion(\'ggplot2\')))"')                       , emit: versions_ggplot2,    topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -25,7 +28,7 @@ process PHYLOSEQ_METRICS {
     def postfix = complete ? "complete" : "rarefied"
 
     """
-    #!/usr/bin/env Rscript
+    Rscript - <<EOF
 
     library(phyloseq)
     library(dplyr)
@@ -339,6 +342,7 @@ process PHYLOSEQ_METRICS {
         "Shannon index: mean ", mean(shannon), " sd ", sd(shannon), "."
         )
     writeLines(report, "metrics_overview_${postfix}.txt")
+    EOF
     """
     
     stub:

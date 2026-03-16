@@ -11,7 +11,9 @@ process PHYLOSEQ_MAKEOBJECT {
     output:
     path "phyloseq.RDS"                                                                                                                        , emit: phyloseq
     path "phylo_raw_taxtable.csv"                                                                                                              , emit: taxtable
-    tuple val("${task.process}"), val('phyloseq'), eval("Rscript -e \"cat(as.character(packageVersion('phyloseq')))\""), emit: versions, topic: versions
+    tuple val("${task.process}"), val('R'),          eval('Rscript -e "cat(paste(R.version[c(\'major\',\'minor\')], collapse=\'.\'))"')        , emit: versions_r,          topic: versions
+    tuple val("${task.process}"), val('phyloseq'),   eval('Rscript -e "cat(as.character(packageVersion(\'phyloseq\')))"')                      , emit: versions_phyloseq,   topic: versions
+    tuple val("${task.process}"), val('Biostrings'), eval('Rscript -e "cat(as.character(packageVersion(\'Biostrings\')))"')                    , emit: versions_biostrings, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -21,7 +23,7 @@ process PHYLOSEQ_MAKEOBJECT {
     def treepresent = tree.name != 'NO_TREEFILE' ? "TRUE" : "FALSE"
 
     """
-    #!/usr/bin/env Rscript
+    Rscript - <<EOF
     library(Biostrings)
     library(phyloseq)
 
@@ -55,6 +57,7 @@ process PHYLOSEQ_MAKEOBJECT {
 
     saveRDS(ps, "phyloseq.RDS")
     write.csv(ps@tax_table, "phylo_raw_taxtable.csv")
+    EOF
     """
 
     stub:

@@ -11,14 +11,16 @@ process PHYLOSEQ_DECONTAM {
     path "decontam_report.txt"                                                                                                           , emit: report
     path "decontam_contaminants.csv"                                                                                                     , emit: contaminants
     path "decontam_prev_plot.pdf"                                                                                                        , emit: prev_plot
-    tuple val("${task.process}"), val('decontam'), eval("Rscript -e \"cat(as.character(packageVersion('decontam')))\""), emit: versions, topic: versions
+    tuple val("${task.process}"), val('R'),        eval('Rscript -e "cat(paste(R.version[c(\'major\',\'minor\')], collapse=\'.\'))"')  , emit: versions_r,        topic: versions
+    tuple val("${task.process}"), val('phyloseq'), eval('Rscript -e "cat(as.character(packageVersion(\'phyloseq\')))"')                , emit: versions_phyloseq, topic: versions
+    tuple val("${task.process}"), val('decontam'), eval('Rscript -e "cat(as.character(packageVersion(\'decontam\')))"')                , emit: versions_decontam, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
     """
-    #!/usr/bin/env Rscript
+    Rscript - <<EOF
     library(phyloseq)
     library(decontam)
     library(ggplot2)
@@ -172,6 +174,7 @@ process PHYLOSEQ_DECONTAM {
         writeLines(report_lines, "decontam_report.txt")
         saveRDS(ps_noncontam, "phyloseq_decontam.RDS")
     }
+    EOF
     """
 
     stub:

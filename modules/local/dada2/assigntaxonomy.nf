@@ -12,7 +12,8 @@ process DADA2_ASSIGNTAXONOMY {
 
     output:
     path "taxtable.csv"                                                                                                                     , emit: taxtable
-    tuple val("${task.process}"), val('dada2'), eval("Rscript -e \"cat(as.character(packageVersion('dada2')))\""), emit: versions, topic: versions
+    tuple val("${task.process}"), val('R'),     eval('Rscript -e "cat(paste(R.version[c(\'major\',\'minor\')], collapse=\'.\'))"')       , emit: versions_r,     topic: versions
+    tuple val("${task.process}"), val('dada2'), eval('Rscript -e "cat(as.character(packageVersion(\'dada2\')))"')                        , emit: versions_dada2, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -23,7 +24,7 @@ process DADA2_ASSIGNTAXONOMY {
     def seed = task.ext.seed ?: '1234'
 
     """
-    #!/usr/bin/env Rscript
+    Rscript - <<EOF
     suppressPackageStartupMessages(library(dada2))
     set.seed($seed)
     taxtable <- assignTaxonomy( "$asvs", 
@@ -37,6 +38,7 @@ process DADA2_ASSIGNTAXONOMY {
                         allowMultiple = $allowmultiple, 
                         tryRC = $tryrc)
     write.csv(taxa, file = "taxtable.csv", quote=FALSE)
+    EOF
     """
 
     stub:
