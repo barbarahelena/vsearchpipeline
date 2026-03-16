@@ -10,6 +10,7 @@
 
 include { UTILS_NFVALIDATION_PLUGIN } from '../../nf-core/utils_nfvalidation_plugin'
 include { paramsSummaryMap          } from 'plugin/nf-validation'
+include { fromSamplesheet           } from 'plugin/nf-validation'
 include { UTILS_NEXTFLOW_PIPELINE   } from '../../nf-core/utils_nextflow_pipeline'
 include { completionEmail           } from '../../nf-core/utils_nfcore_pipeline'
 include { completionSummary         } from '../../nf-core/utils_nfcore_pipeline'
@@ -34,6 +35,8 @@ workflow PIPELINE_INITIALISATION {
     monochrome_logs   // boolean: Do not use coloured log outputs
     nextflow_cli_args //   array: List of positional nextflow CLI args
     outdir            //  string: The output directory where the results will be saved
+    input             //  string: Path to input samplesheet
+    primers           //  string: Path to primers CSV, or null
 
     main:
 
@@ -72,7 +75,8 @@ workflow PIPELINE_INITIALISATION {
     //
     // Create channel from input samplesheet
     //
-    channel.fromSamplesheet('input')
+    Channel
+        .fromSamplesheet('input')
         .map { meta, fastq_1, fastq_2 ->
             def new_meta = meta + [ single_end: !fastq_2 ]
             def reads    = fastq_2 ? [ fastq_1, fastq_2 ] : [ fastq_1 ]
@@ -84,10 +88,10 @@ workflow PIPELINE_INITIALISATION {
     // Create and validate primer channel (if primers are not skipped)
     //
     if (!params.skip_primers) {
-        if (!params.primers) {
+        if (!primers) {
             error "[vsearchpipeline] params.primers is not set. Please provide a primers file with --primers or set --skip_primers true."
         }
-        channel.fromPath(params.primers, checkIfExists: true)
+        channel.fromPath(primers, checkIfExists: true)
             .map { csv -> parsePrimersheet(csv) }
             .first()
             .set { ch_primers }
