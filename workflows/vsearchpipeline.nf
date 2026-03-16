@@ -302,9 +302,11 @@ workflow VSEARCHPIPELINE {
     ch_multiqc_files = ch_multiqc_files.mix(channel.topic('versions').collectFile(name: 'collated_versions.yml'))
     ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.map { _meta, zips -> zips }.flatten())
 
-    n_samples.filter { n -> n <= 6000 }.combine(ch_multiqc_files.collect()).map { _n, files ->
-        [ [:], files, [], [], [], [] ]
-    }.set { ch_multiqc_input }
+    n_samples.filter { n -> n <= 6000 }
+        .map { n -> [ n ] }
+        .combine(ch_multiqc_files.collect().map { files -> [ files ] })
+        .map { _n, files -> [ [id: 'multiqc'], files, [], [], [], [] ] }
+        .set { ch_multiqc_input }
 
     MULTIQC ( ch_multiqc_input )
 }
