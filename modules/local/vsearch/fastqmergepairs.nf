@@ -13,8 +13,8 @@ process VSEARCH_FASTQMERGEPAIRS {
     val maxdiffpct
 
     output:
-    tuple val(meta), path("*.merged.fastq.gz")  , emit: reads
-    //path "versions.yml"                         , emit: versions
+    tuple val(meta), path("*.merged.fastq.gz")                                                                            , emit: reads
+    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed \'s/vsearch //; s/,.*//\''), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

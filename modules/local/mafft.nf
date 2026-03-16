@@ -6,8 +6,8 @@ process MAFFT {
     path asvs
 
     output:
-    path "asvs.msa"                 , emit: msa
-    path "versions.yml"             , emit: versions
+    path "asvs.msa"                                                                                    , emit: msa
+    tuple val("${task.process}"), val('mafft'), eval("mafft --version 2>&1 | sed 's/^v//; s/ (.*//'" ), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -16,12 +16,6 @@ process MAFFT {
     def args = task.ext.args ?: ''
     """
     mafft --auto $asvs > asvs.msa
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        mafft: \$(mafft --version 2>&1 | sed 's/^v//' | sed 's/ (.*)//')
-    END_VERSIONS
-
     """
 
     stub:
@@ -29,10 +23,5 @@ process MAFFT {
     
     """
     touch asvs.msa
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        : \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//' ))
-    END_VERSIONS
     """
 }

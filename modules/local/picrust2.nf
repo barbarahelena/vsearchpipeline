@@ -8,8 +8,8 @@ process PICRUST2 {
     path(asvtab)
 
     output:
-    path("picrust_output/*") , emit: outfolder
-    path "versions.yml"  , emit: versions
+    path("picrust_output/*")                                                                                                   , emit: outfolder
+    tuple val("${task.process}"), val('picrust2'), eval('picrust2_pipeline.py -v | sed "s/picrust2_pipeline.py //"'), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -19,12 +19,6 @@ process PICRUST2 {
     
     """
     picrust2_pipeline.py $args -s $asvfasta -i $asvtab -o picrust_output -p ${task.cpus} --in_traits EC,KO --verbose
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version 2>&1 | sed 's/Python //g')
-        picrust2: \$( picrust2_pipeline.py -v | sed -e "s/picrust2_pipeline.py //g" )
-    END_VERSIONS
     """
 
     stub:

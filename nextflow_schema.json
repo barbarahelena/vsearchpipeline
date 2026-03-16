@@ -391,6 +391,18 @@
                     "default": true,
                     "description": "addSpecies function: If TRUE, the reverse-complement of each sequences will be used for classification if it is a better match to the reference sequences than the forward sequence.",
                     "fa_icon": "fas fa-arrow-left"
+                },
+                "silva_asv_db": {
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "Path to a pre-downloaded SILVA ASV reference database (.fa.gz). If not set, the database will be downloaded automatically.",
+                    "fa_icon": "fas fa-database"
+                },
+                "silva_species_db": {
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "Path to a pre-downloaded SILVA species reference database (.fa.gz). If not set, the database will be downloaded automatically.",
+                    "fa_icon": "fas fa-database"
                 }
             },
             "fa_icon": "fas fa-spell-check"

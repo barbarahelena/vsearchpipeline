@@ -7,9 +7,10 @@ process PHYLOSEQ_RAREFACTION {
     val     rarelevel
 
     output:
-    path "phyloseq_rarefied.RDS"    , emit: phyloseq
-    path "rarefaction_plot.pdf"     , emit: rarecurve
-    path "rarefaction_report.txt"   , emit: rarereport
+    path "phyloseq_rarefied.RDS"                                                                                                               , emit: phyloseq
+    path "rarefaction_plot.pdf"                                                                                                                , emit: rarecurve
+    path "rarefaction_report.txt"                                                                                                              , emit: rarereport
+    tuple val("${task.process}"), val('phyloseq'), eval("Rscript -e \"cat(as.character(packageVersion('phyloseq')))\""), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

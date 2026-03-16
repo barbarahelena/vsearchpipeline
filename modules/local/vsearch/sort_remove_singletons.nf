@@ -9,7 +9,8 @@ process VSEARCH_SORT_REMOVE_SINGLETONS {
     val minsize
 
     output:
-    path "asvs_nonsingle.fasta"     , emit: asvs
+    path "asvs_nonsingle.fasta"                                                                                           , emit: asvs
+    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed \'s/vsearch //; s/,.*//\''), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

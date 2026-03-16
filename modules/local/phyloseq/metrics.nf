@@ -8,13 +8,14 @@ process PHYLOSEQ_METRICS {
     val     complete
 
     output:
-    path "composition_species_*.pdf"      , emit: speciescomp
-    path "composition_genus_*.pdf"        , emit: genuscomp
-    path "composition_family_*.pdf"       , emit: famcomp
-    path "composition_phylum_*.pdf"       , emit: phylumcomp
-    path "shannon_index_*.pdf"            , emit: shannon
-    path "species_richness_*.pdf"         , emit: richness
-    path "metrics_overview_*.txt"         , emit: metrics
+    path "composition_species_*.pdf"                                                                                                           , emit: speciescomp
+    path "composition_genus_*.pdf"                                                                                                             , emit: genuscomp
+    path "composition_family_*.pdf"                                                                                                            , emit: famcomp
+    path "composition_phylum_*.pdf"                                                                                                            , emit: phylumcomp
+    path "shannon_index_*.pdf"                                                                                                                 , emit: shannon
+    path "species_richness_*.pdf"                                                                                                              , emit: richness
+    path "metrics_overview_*.txt"                                                                                                              , emit: metrics
+    tuple val("${task.process}"), val('phyloseq'), eval("Rscript -e \"cat(as.character(packageVersion('phyloseq')))\""), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

@@ -9,9 +9,9 @@ process PHYLOSEQ_MAKEOBJECT {
     path taxtable
 
     output:
-    path "phyloseq.RDS"             , emit: phyloseq
-    path "phylo_raw_taxtable.csv"   , emit: taxtable
-    path "versions.yml"             , emit: versions
+    path "phyloseq.RDS"                                                                                                                        , emit: phyloseq
+    path "phylo_raw_taxtable.csv"                                                                                                              , emit: taxtable
+    tuple val("${task.process}"), val('phyloseq'), eval("Rscript -e \"cat(as.character(packageVersion('phyloseq')))\""), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -55,14 +55,6 @@ process PHYLOSEQ_MAKEOBJECT {
 
     saveRDS(ps, "phyloseq.RDS")
     write.csv(ps@tax_table, "phylo_raw_taxtable.csv")
-
-    writeLines(paste0("\\"${task.process}\\":\n", 
-            paste0("    R: ", paste0(R.Version()[c("major","minor")], collapse = "."), "\n"),
-            paste0("    phyloseq: ", packageVersion("phyloseq"), "\n"),
-            paste0("    phytools: ", packageVersion("phytools"), "\n"),
-            paste0("    Biostrings: ", packageVersion("Biostrings"))), 
-        "versions.yml")
-
     """
 
     stub:
@@ -70,12 +62,5 @@ process PHYLOSEQ_MAKEOBJECT {
     """
     touch phyloseq.RDS
     touch phylo_raw_taxtable.csv
-
-    writeLines(paste0("\\"${task.process}\\":\n", 
-            paste0("    R: ", paste0(R.Version()[c("major","minor")], collapse = "."), "\n"),
-            paste0("    phyloseq: ", packageVersion("phyloseq"), "\n"),
-            paste0("    phytools: ", packageVersion("phytools"), "\n"),
-            paste0("    Biostrings: ", packageVersion("Biostrings"))), 
-        "versions.yml")
     """
 }

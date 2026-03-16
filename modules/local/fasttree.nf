@@ -11,8 +11,8 @@ process FASTTREE {
     path msa
 
     output:
-    path "asvs.msa.tree"        , emit: tree
-    path "versions.yml"         , emit: versions
+    path "asvs.msa.tree"                                                                                                                            , emit: tree
+    tuple val("${task.process}"), val('fasttree'), eval("fasttree -help 2>&1 | head -n 1 | sed -n 's/.*\\([0-9]\\+\\.[0-9]\\+\\.[0-9]\\+\\).*/\\1/p'"), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -26,16 +26,11 @@ process FASTTREE {
         -gamma \\
         $msa \\
         > asvs.msa.tree
-    
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        fasttree: \$(fasttree -help 2>&1 | head -n 1 | sed -n 's/.*\\([0-9]\\+\\.[0-9]\\+\\.[0-9]\\+\\).*/\\1/p')
-    END_VERSIONS
     """
 
     stub:
     def args = task.ext.args ?: ''
     """
-    
+    touch asvs.msa.tree
     """
 }

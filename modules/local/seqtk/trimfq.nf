@@ -12,8 +12,8 @@ process SEQTK_TRIMFQ {
     val primers
 
     output:
-    tuple val(meta), path("*.trim.fastq.gz")    , emit: reads
-    path "versions.yml"                         , emit: versions
+    tuple val(meta), path("*.trim.fastq.gz")                                                       , emit: reads
+    tuple val("${task.process}"), val('seqtk'), eval('echo $(seqtk --version 2>&1)'), emit: versions, topic: versions
 
     script:
     def args = task.ext.args ?: ''
@@ -38,11 +38,6 @@ process SEQTK_TRIMFQ {
         cp "$fwd_reads" "$fwd_trimmed"
         cp "$rev_reads" "$rev_trimmed"
     fi
-        
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        : \$(echo \$(seqtk --version 2>&1) | sed 's/^.*seqtk //; s/Using.*\$//' ))
-    END_VERSIONS
     """
 
     stub:
@@ -58,10 +53,5 @@ process SEQTK_TRIMFQ {
     """
     touch $fwd_trimmed
     touch $rev_trimmed
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        : \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//' ))
-    END_VERSIONS
     """
 }

@@ -1,11 +1,10 @@
 process SILVADATABASES {
     label 'process_single_med'
-    storeDir 'db'
 
     output:
-    path "SILVA_asv_db.fa.gz"             , emit: asvdb
-    path "SILVA_species_db.fa.gz"         , emit: speciesdb
-    path "versions.yml"                   , emit: versions
+    path "SILVA_asv_db.fa.gz"                                        , emit: asvdb
+    path "SILVA_species_db.fa.gz"                                    , emit: speciesdb
+    tuple val("${task.process}"), val('SILVA'), eval('echo "138.2"') , emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -17,18 +16,12 @@ process SILVADATABASES {
         -O SILVA_asv_db.fa.gz
     wget -c https://zenodo.org/records/14169026/files/silva_v138.2_assignSpecies.fa.gz?download=1 \\
         -O SILVA_species_db.fa.gz
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        SILVA: 138.2
-    END_VERSIONS
     """
 
     stub:
   
     """
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        SILVA: 138.2
-    END_VERSIONS
+    touch SILVA_asv_db.fa.gz
+    touch SILVA_species_db.fa.gz
     """
 }

@@ -11,8 +11,8 @@ process DADA2_ASSIGNTAXONOMY {
     val tryrevcompl
 
     output:
-    path "taxtable.csv"             , emit: taxtable
-    path "versions.yml"             , emit: versions
+    path "taxtable.csv"                                                                                                                     , emit: taxtable
+    tuple val("${task.process}"), val('dada2'), eval("Rscript -e \"cat(as.character(packageVersion('dada2')))\""), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -37,11 +37,6 @@ process DADA2_ASSIGNTAXONOMY {
                         allowMultiple = $allowmultiple, 
                         tryRC = $tryrc)
     write.csv(taxa, file = "taxtable.csv", quote=FALSE)
-
-    writeLines(c("\\"${task.process}\\":", 
-        paste0("    R: ", paste0(R.Version()[c("major","minor")], collapse = ".")),
-        paste0("    dada2: ", packageVersion("dada2")) ),
-        "versions.yml")
     """
 
     stub:
@@ -51,10 +46,5 @@ process DADA2_ASSIGNTAXONOMY {
 
     """
     touch taxtable.csv
-
-    writeLines(c("\\"${task.process}\\":", 
-        paste0("    R: ", paste0(R.Version()[c("major","minor")], collapse = ".")),
-        paste0("    dada2: ", packageVersion("dada2")) ),
-        "versions.yml")
     """
 }

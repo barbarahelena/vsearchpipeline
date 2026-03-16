@@ -9,9 +9,9 @@ process VSEARCH_USEARCHGLOBAL {
     val id
     
     output:
-    path "all.concat.fasta"         , emit: concatfasta
-    path "count_table.txt"          , emit: counts
-    path "versions.yml"             , emit: versions
+    path "all.concat.fasta"                                                                                               , emit: concatfasta
+    path "count_table.txt"                                                                                                , emit: counts
+    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed \'s/vsearch //; s/,.*//\''), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -26,11 +26,6 @@ process VSEARCH_USEARCHGLOBAL {
         --id $id \\
         --threads $task.cpus \\
         --otutabout count_table.txt
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        vsearch: \$(vsearch --version 2>&1 | head -n 1 | sed 's/vsearch //g' | sed 's/,.*//g' | sed 's/^v//' | sed 's/_.*//')
-    END_VERSIONS
     """
 
     stub:
@@ -38,10 +33,5 @@ process VSEARCH_USEARCHGLOBAL {
     """
     touch all.concat.fasta
     touch count_table.txt
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        vsearch: \$(vsearch --version 2>&1 | head -n 1 | sed 's/vsearch //; s/,.*//')
-    END_VERSIONS
     """
 }

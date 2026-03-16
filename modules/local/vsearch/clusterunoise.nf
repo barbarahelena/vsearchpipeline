@@ -9,8 +9,8 @@ process VSEARCH_CLUSTERUNOISE {
     val alpha
 
     output:
-    path "asvs.clustered.fasta"      , emit: asvs
-    //path "versions.yml"             , emit: versions
+    path "asvs.clustered.fasta"                                                                                           , emit: asvs
+    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed \'s/vsearch //; s/,.*//\''), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

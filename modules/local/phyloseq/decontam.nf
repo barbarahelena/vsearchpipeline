@@ -7,11 +7,11 @@ process PHYLOSEQ_DECONTAM {
     path samplesheet
 
     output:
-    path "phyloseq_decontam.RDS"            , emit: phyloseq
-    path "decontam_report.txt"              , emit: report
-    path "decontam_contaminants.csv"        , emit: contaminants
-    path "decontam_prev_plot.pdf"           , emit: prev_plot
-    path "versions.yml"                     , emit: versions
+    path "phyloseq_decontam.RDS"                                                                                                         , emit: phyloseq
+    path "decontam_report.txt"                                                                                                           , emit: report
+    path "decontam_contaminants.csv"                                                                                                     , emit: contaminants
+    path "decontam_prev_plot.pdf"                                                                                                        , emit: prev_plot
+    tuple val("${task.process}"), val('decontam'), eval("Rscript -e \"cat(as.character(packageVersion('decontam')))\""), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -172,13 +172,6 @@ process PHYLOSEQ_DECONTAM {
         writeLines(report_lines, "decontam_report.txt")
         saveRDS(ps_noncontam, "phyloseq_decontam.RDS")
     }
-
-    writeLines(paste0(
-        "\\"${task.process}\\":\\n",
-        paste0("    R: ", paste0(R.Version()[c("major","minor")], collapse = "."), "\\n"),
-        paste0("    phyloseq: ", packageVersion("phyloseq"), "\\n"),
-        paste0("    decontam: ", packageVersion("decontam"))),
-    "versions.yml")
     """
 
     stub:
@@ -187,6 +180,5 @@ process PHYLOSEQ_DECONTAM {
     touch decontam_report.txt
     touch decontam_contaminants.csv
     touch decontam_prev_plot.pdf
-    touch versions.yml
     """
 }

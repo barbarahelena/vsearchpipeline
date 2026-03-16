@@ -71,7 +71,6 @@ include { PRIMERS_CHECK } from '../subworkflows/local/primers_check'
 //
 include { FASTQC                      } from '../modules/nf-core/fastqc/main'
 include { MULTIQC                     } from '../modules/nf-core/multiqc/main'
-include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/custom/dumpsoftwareversions/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -83,8 +82,6 @@ include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/custom/dumpsoft
 def multiqc_report = []
 
 workflow VSEARCHPIPELINE {
-    ch_versions = channel.empty()
-
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
     //
@@ -109,7 +106,6 @@ workflow VSEARCHPIPELINE {
     FASTQC (
         INPUT_CHECK.out.reads
     )
-    ch_versions = ch_versions.mix(FASTQC.out.versions.first())
     //
     // MODULE:  Seqtk trim primers in fastq files
     //
@@ -197,16 +193,13 @@ workflow VSEARCHPIPELINE {
         VSEARCH_UCHIMEDENOVO.out.asvs,
         params.usearch_id
     )
-    ch_versions = ch_versions.mix(VSEARCH_USEARCHGLOBAL.out.versions)
     
     if(params.skip_tree != true){
-        //
         // MODULE: MAFFT for multiple sequence alignment
         //
         MAFFT (
             VSEARCH_UCHIMEDENOVO.out.asvs
         )
-        ch_versions = ch_versions.mix(MAFFT.out.versions)
 
         //
         // MODULE: Build tree with FastTree
@@ -214,29 +207,34 @@ workflow VSEARCHPIPELINE {
             FASTTREE (
                 MAFFT.out.msa
             )
-            ch_versions = ch_versions.mix(FASTTREE.out.versions)
             ch_tree = FASTTREE.out.tree
     } else {
         ch_tree = channel.fromPath("$projectDir/assets/NO_TREEFILE")
     }
     
     // 
-    // MODULE: Download SILVA if not already present in db folder
+    // MODULE: Download SILVA if not already present in db folder, or use supplied paths
     //
-    SILVADATABASES()
+    if (params.silva_asv_db && params.silva_species_db) {
+        ch_silva_asv_db     = channel.fromPath(params.silva_asv_db, checkIfExists: true)
+        ch_silva_species_db = channel.fromPath(params.silva_species_db, checkIfExists: true)
+    } else {
+        SILVADATABASES()
+        ch_silva_asv_db     = SILVADATABASES.out.asvdb
+        ch_silva_species_db = SILVADATABASES.out.speciesdb
+    }
     
     // 
     // MODULE: DADA2 Assign taxonomy with SILVA db
     //
     DADA2_ASSIGNTAXONOMY (
         VSEARCH_UCHIMEDENOVO.out.asvs,
-        SILVADATABASES.out.asvdb,
-        SILVADATABASES.out.speciesdb,
+        ch_silva_asv_db,
+        ch_silva_species_db,
         params.dada2_minboot,
         params.dada2_allowmultiple,
         params.dada2_tryrevcompl
     )
-    ch_versions = ch_versions.mix(DADA2_ASSIGNTAXONOMY.out.versions)
 
     //
     // MODULE: PICRUST
@@ -246,7 +244,6 @@ workflow VSEARCHPIPELINE {
             VSEARCH_UCHIMEDENOVO.out.asvs,
             VSEARCH_USEARCHGLOBAL.out.counts
         )
-        ch_versions = ch_versions.mix(PICRUST2.out.versions)
     }
     //
     // MODULE: Make phyloseq object
@@ -259,7 +256,6 @@ workflow VSEARCHPIPELINE {
     )
 
     ch_phyloseq = PHYLOSEQ_COMPLETE_MAKEOBJECT.out.phyloseq
-    ch_versions = ch_versions.mix(PHYLOSEQ_COMPLETE_MAKEOBJECT.out.versions)
     ch_taxtable = PHYLOSEQ_COMPLETE_MAKEOBJECT.out.taxtable
     ch_complete = true
 
@@ -271,7 +267,6 @@ workflow VSEARCHPIPELINE {
             ch_phyloseq,
             file(params.input)
         )
-        ch_versions = ch_versions.mix(PHYLOSEQ_DECONTAM.out.versions)
         // Use decontam output as basis for rarefaction and downstream steps
         ch_phyloseq_for_rarefaction = PHYLOSEQ_DECONTAM.out.phyloseq
     } else {
@@ -329,13 +324,6 @@ workflow VSEARCHPIPELINE {
     }
     
     //
-    // MODULE: Collect software versions
-    //
-    CUSTOM_DUMPSOFTWAREVERSIONS (
-        ch_versions.unique().collectFile(name: 'collated_versions.yml')
-    )
-
-    //
     // MODULE: MultiQC
     //
     workflow_summary    = WorkflowVsearchpipeline.paramsSummaryMultiqc(workflow, summary_params)
@@ -347,18 +335,15 @@ workflow VSEARCHPIPELINE {
     ch_multiqc_files = channel.empty()
     ch_multiqc_files = ch_multiqc_files.mix(ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml'))
     ch_multiqc_files = ch_multiqc_files.mix(ch_methods_description.collectFile(name: 'methods_description_mqc.yaml'))
-    ch_multiqc_files = ch_multiqc_files.mix(CUSTOM_DUMPSOFTWAREVERSIONS.out.mqc_yml.collect())
+    ch_multiqc_files = ch_multiqc_files.mix(channel.topic('versions').collectFile(name: 'collated_versions.yml'))
     ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect { f -> f[1] }.ifEmpty([]))
 
     MULTIQC (
-        ch_multiqc_files.collect(),
-        ch_multiqc_config.toList(),
-        ch_multiqc_custom_config.toList(),
-        ch_multiqc_logo.toList(),
-        [],
-        []
+        ch_multiqc_files.collect().combine(ch_multiqc_config.toList()).combine(ch_multiqc_logo.toList()).combine(ch_multiqc_custom_config.toList()).map { files, config, logo, custom_config ->
+            [ [:], files, [config, custom_config].flatten().findAll { it }, logo ?: [], [], [] ]
+        }
     )
-    multiqc_report = MULTIQC.out.report.toList()
+    multiqc_report = MULTIQC.out.report.map { _meta, report -> report }.toList()
 
 
 }

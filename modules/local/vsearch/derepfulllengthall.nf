@@ -11,9 +11,9 @@ process VSEARCH_DEREPFULLLENGTHALL {
     val minunique
 
     output:
-    path("all.concat.fasta") , emit: concatreads
-    path("all.derep.fasta")  , emit: reads
-    path "versions.yml"      , emit: versions
+    path("all.concat.fasta")                                                                                              , emit: concatreads
+    path("all.derep.fasta")                                                                                               , emit: reads
+    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed \'s/vsearch //; s/,.*//\''), emit: versions, topic: versions
     
     when:
     task.ext.when == null || task.ext.when
@@ -32,11 +32,6 @@ process VSEARCH_DEREPFULLLENGTHALL {
         --sizeout \\
         --fasta_width $fastawidth \\
         --minuniquesize $minunique
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        vsearch: \$(vsearch --version 2>&1 | head -n 1 | sed 's/vsearch //; s/,.*//')
-    END_VERSIONS
     """
 
     stub:
@@ -44,10 +39,5 @@ process VSEARCH_DEREPFULLLENGTHALL {
     """
     touch all.concat.fasta
     touch all.derep.fasta
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        vsearch: \$(vsearch --version 2>&1 | head -n 1 | sed 's/vsearch //; s/,.*//')
-    END_VERSIONS
     """
 }

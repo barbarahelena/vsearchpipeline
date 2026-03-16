@@ -7,9 +7,10 @@ process PHYLOSEQ_FIXTAXONOMY {
     val     complete
     
     output:
-    path "taxtable_*.RDS"                 , emit: taxonomy
-    path "phylogen_levels_*.csv"          , emit: phylevels
-    path "phylogen_levels_top300_*.csv"   , emit: phylevelstop
+    path "taxtable_*.RDS"                                                                                                                      , emit: taxonomy
+    path "phylogen_levels_*.csv"                                                                                                               , emit: phylevels
+    path "phylogen_levels_top300_*.csv"                                                                                                        , emit: phylevelstop
+    tuple val("${task.process}"), val('phyloseq'), eval("Rscript -e \"cat(as.character(packageVersion('phyloseq')))\""), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
