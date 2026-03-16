@@ -17,15 +17,6 @@ process PRIMERSHEET_CHECK {
     when:
     task.ext.when == null || task.ext.when
 
-    script: // This script is bundled with the pipeline, in barbarahelena/vsearchpipeline/bin/
-    """
-    check_primersheet.py \\
-        $primersheet \\
-        primersheet.valid.csv
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
-    END_VERSIONS
-    """
+    script: // This script is bundled with the pipeline, in barbarahelena/vsearchpipeline/modules/local/templates/
+    template 'check_primersheet.py'
 }

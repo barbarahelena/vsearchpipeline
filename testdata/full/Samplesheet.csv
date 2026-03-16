@@ -1,3 +1,0 @@
-sample,fastq_1,fastq_2
-sampleID_1,https://raw.githubusercontent.com/barbarahelena/vsearchpipeline/main/testdata/full/S1_R1.fastq.gz,https://raw.githubusercontent.com/barbarahelena/vsearchpipeline/main/testdata/full/S1_R2.fastq.gz
-sampleID_2,https://raw.githubusercontent.com/barbarahelena/vsearchpipeline/main/testdata/full/S2_R1.fastq.gz,https://raw.githubusercontent.com/barbarahelena/vsearchpipeline/main/testdata/full/S2_R2.fastq.gz

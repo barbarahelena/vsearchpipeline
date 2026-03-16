@@ -1,76 +1,43 @@
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    PRINT PARAMS SUMMARY
+    IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { paramsSummaryLog; paramsSummaryMap } from 'plugin/nf-validation'
-
-def summary_params = paramsSummaryMap(workflow)
-
-// Print parameter summary log to screen
-log.info paramsSummaryLog(workflow)
-
-WorkflowVsearchpipeline.initialise(params, log)
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    CONFIG FILES
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
-
-ch_multiqc_config          = channel.fromPath("$projectDir/assets/multiqc_config.yml", checkIfExists: true)
-ch_multiqc_custom_config   = params.multiqc_config ? channel.fromPath(params.multiqc_config, checkIfExists: true) : channel.empty()
-ch_multiqc_logo            = params.multiqc_logo   ? channel.fromPath(params.multiqc_logo, checkIfExists: true) : channel.empty()
-ch_multiqc_custom_methods_description = params.multiqc_methods_description ? file(params.multiqc_methods_description, checkIfExists: true) : file("$projectDir/assets/methods_description_template.yml", checkIfExists: true)
-
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    IMPORT LOCAL MODULES/SUBWORKFLOWS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+include { paramsSummaryMap          } from 'plugin/nf-validation'
+include { paramsSummaryMultiqc      } from '../subworkflows/nf-core/utils_nfcore_pipeline'
+include { methodsDescriptionText    } from '../subworkflows/local/utils_vsearchpipeline_pipeline'
 
 //
 // MODULE: Local modules
 //
-include { SEQTK_TRIMFQ }                                            from '../modules/local/seqtk/trimfq'
-include { VSEARCH_FASTQMERGEPAIRS }                                 from '../modules/local/vsearch/fastqmergepairs'
-include { VSEARCH_FASTQFILTER }                                     from '../modules/local/vsearch/fastqfilter'
-include { VSEARCH_DEREPFULLLENGTH }                                 from '../modules/local/vsearch/derepfulllength'
-include { VSEARCH_DEREPFULLLENGTHALL }                              from '../modules/local/vsearch/derepfulllengthall'
-include { VSEARCH_CLUSTERUNOISE }                                   from '../modules/local/vsearch/clusterunoise'
-include { VSEARCH_SORT_REMOVE_SINGLETONS }                          from '../modules/local/vsearch/sort_remove_singletons'
-include { VSEARCH_UCHIMEDENOVO }                                    from '../modules/local/vsearch/uchimedenovo'
-include { VSEARCH_USEARCHGLOBAL }                                   from '../modules/local/vsearch/usearchglobal'
-include { MAFFT }                                                   from '../modules/local/mafft'
-include { FASTTREE }                                                from '../modules/local/fasttree'
-include { SILVADATABASES }                                          from '../modules/local/silvadatabases'
-include { DADA2_ASSIGNTAXONOMY }                                    from '../modules/local/dada2/assigntaxonomy'
-include { PICRUST2 }                                                 from '../modules/local/picrust2'
-include { PHYLOSEQ_MAKEOBJECT as PHYLOSEQ_COMPLETE_MAKEOBJECT }     from '../modules/local/phyloseq/makeobject'
-include { PHYLOSEQ_FIXTAXONOMY as PHYLOSEQ_COMPLETE_FIXTAX }        from '../modules/local/phyloseq/fixtaxonomy'
-include { PHYLOSEQ_METRICS as PHYLOSEQ_COMPLETE_METRICS }           from '../modules/local/phyloseq/metrics'
-include { PHYLOSEQ_DECONTAM }                                        from '../modules/local/phyloseq/decontam'
-include { PHYLOSEQ_RAREFACTION as PHYLOSEQ_RAREFIED }               from '../modules/local/phyloseq/rarefaction'
-include { PHYLOSEQ_METRICS as PHYLOSEQ_RAREFIED_METRICS }           from '../modules/local/phyloseq/metrics'
-include { PHYLOSEQ_FIXTAXONOMY as PHYLOSEQ_RAREFIED_FIXTAX }        from '../modules/local/phyloseq/fixtaxonomy'
-
-
-//
-// SUBWORKFLOW: Local subworkflows
-//
-include { INPUT_CHECK } from '../subworkflows/local/input_check'
-include { PRIMERS_CHECK } from '../subworkflows/local/primers_check'
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    IMPORT MODULES/SUBWORKFLOWS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+include { SEQTK_TRIMFQ                                          } from '../modules/local/seqtk/trimfq'
+include { VSEARCH_FASTQMERGEPAIRS                               } from '../modules/local/vsearch/fastqmergepairs'
+include { VSEARCH_FASTQFILTER                                   } from '../modules/local/vsearch/fastqfilter'
+include { VSEARCH_DEREPFULLLENGTH                               } from '../modules/local/vsearch/derepfulllength'
+include { VSEARCH_DEREPFULLLENGTHALL                            } from '../modules/local/vsearch/derepfulllengthall'
+include { VSEARCH_CLUSTERUNOISE                                 } from '../modules/local/vsearch/clusterunoise'
+include { VSEARCH_SORT_REMOVE_SINGLETONS                        } from '../modules/local/vsearch/sort_remove_singletons'
+include { VSEARCH_UCHIMEDENOVO                                  } from '../modules/local/vsearch/uchimedenovo'
+include { VSEARCH_USEARCHGLOBAL                                 } from '../modules/local/vsearch/usearchglobal'
+include { MAFFT                                                 } from '../modules/local/mafft'
+include { FASTTREE                                              } from '../modules/local/fasttree'
+include { SILVADATABASES                                        } from '../modules/local/silvadatabases'
+include { DADA2_ASSIGNTAXONOMY                                  } from '../modules/local/dada2/assigntaxonomy'
+include { PICRUST2                                              } from '../modules/local/picrust2'
+include { PHYLOSEQ_MAKEOBJECT as PHYLOSEQ_COMPLETE_MAKEOBJECT   } from '../modules/local/phyloseq/makeobject'
+include { PHYLOSEQ_FIXTAXONOMY as PHYLOSEQ_COMPLETE_FIXTAX      } from '../modules/local/phyloseq/fixtaxonomy'
+include { PHYLOSEQ_METRICS as PHYLOSEQ_COMPLETE_METRICS         } from '../modules/local/phyloseq/metrics'
+include { PHYLOSEQ_DECONTAM                                     } from '../modules/local/phyloseq/decontam'
+include { PHYLOSEQ_RAREFACTION as PHYLOSEQ_RAREFIED             } from '../modules/local/phyloseq/rarefaction'
+include { PHYLOSEQ_METRICS as PHYLOSEQ_RAREFIED_METRICS         } from '../modules/local/phyloseq/metrics'
+include { PHYLOSEQ_FIXTAXONOMY as PHYLOSEQ_RAREFIED_FIXTAX      } from '../modules/local/phyloseq/fixtaxonomy'
 
 //
-// MODULE: Installed from nf-core/modules
+// MODULE: nf-core modules
 //
-include { FASTQC                      } from '../modules/nf-core/fastqc/main'
-include { MULTIQC                     } from '../modules/nf-core/multiqc/main'
+include { FASTQC  } from '../modules/nf-core/fastqc/main'
+include { MULTIQC } from '../modules/nf-core/multiqc/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -78,44 +45,29 @@ include { MULTIQC                     } from '../modules/nf-core/multiqc/main'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-// Info required for completion email and summary
-def multiqc_report = []
-
 workflow VSEARCHPIPELINE {
-    //
-    // SUBWORKFLOW: Read in samplesheet, validate and stage input files
-    //
-    INPUT_CHECK (
-        file(params.input)
-    )
-    //
-    // SUBWORKFLOW: Read and validate primersheet
-    //
-    if(!params.skip_primers){
-        if (!params.primers) {
-            error "params.primers is not set. Please provide a primers file with --primers or set --skip_primers true."
-        }
-        PRIMERS_CHECK (
-            channel.fromPath(params.primers, checkIfExists: true)
-        )
-        ch_primers = PRIMERS_CHECK.out.primers.first()
-    }
+
+    take:
+    ch_reads   // channel: [ val(meta), [ reads ] ]
+    ch_primers // channel: val(map with forward/reverse keys), or empty
+
+    main:
     //
     // MODULE: Run FastQC
     //
     FASTQC (
-        INPUT_CHECK.out.reads
+        ch_reads
     )
     //
     // MODULE:  Seqtk trim primers in fastq files
     //
     if (!params.skip_primers) {
         SEQTK_TRIMFQ (
-            INPUT_CHECK.out.reads, 
+            ch_reads, 
             ch_primers
         ).reads.set {ch_trimmed_reads}
     } else {
-        ch_trimmed_reads = INPUT_CHECK.out.reads
+        ch_trimmed_reads = ch_reads
     }    
 
     //
@@ -326,43 +278,35 @@ workflow VSEARCHPIPELINE {
     //
     // MODULE: MultiQC
     //
-    workflow_summary    = WorkflowVsearchpipeline.paramsSummaryMultiqc(workflow, summary_params)
-    ch_workflow_summary = channel.value(workflow_summary)
+    def ch_multiqc_custom_methods_description = params.multiqc_methods_description
+        ? file(params.multiqc_methods_description, checkIfExists: true)
+        : file("$projectDir/assets/methods_description_template.yml", checkIfExists: true)
 
-    methods_description    = WorkflowVsearchpipeline.methodsDescriptionText(workflow, ch_multiqc_custom_methods_description, params)
-    ch_methods_description = channel.value(methods_description)
+    def workflow_summary    = paramsSummaryMultiqc(paramsSummaryMap(workflow))
+    def ch_workflow_summary = channel.value(workflow_summary).collectFile(name: 'workflow_summary_mqc.yaml')
+
+    def methods_description = methodsDescriptionText(ch_multiqc_custom_methods_description)
+    def ch_methods_description = channel.value(methods_description).collectFile(name: 'methods_description_mqc.yaml')
+
+    def n_samples = ch_reads.count().map { n -> n * 2 }  // paired-end: 2 FastQC files per sample
+
+    n_samples.subscribe { n ->
+        if (n > 6000) {
+            log.warn "[vsearchpipeline] Skipping MultiQC: number of FastQC files (${n}) exceeds 6000."
+        }
+    }
 
     ch_multiqc_files = channel.empty()
-    ch_multiqc_files = ch_multiqc_files.mix(ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml'))
-    ch_multiqc_files = ch_multiqc_files.mix(ch_methods_description.collectFile(name: 'methods_description_mqc.yaml'))
+    ch_multiqc_files = ch_multiqc_files.mix(ch_workflow_summary)
+    ch_multiqc_files = ch_multiqc_files.mix(ch_methods_description)
     ch_multiqc_files = ch_multiqc_files.mix(channel.topic('versions').collectFile(name: 'collated_versions.yml'))
-    ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect { f -> f[1] }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.map { _meta, zips -> zips }.flatten())
 
-    MULTIQC (
-        ch_multiqc_files.collect().combine(ch_multiqc_config.toList()).combine(ch_multiqc_logo.toList()).combine(ch_multiqc_custom_config.toList()).map { files, config, logo, custom_config ->
-            [ [:], files, [config, custom_config].flatten().findAll { it }, logo ?: [], [], [] ]
-        }
-    )
-    multiqc_report = MULTIQC.out.report.map { _meta, report -> report }.toList()
+    n_samples.filter { n -> n <= 6000 }.combine(ch_multiqc_files.collect()).map { _n, files ->
+        [ [:], files, [], [], [], [] ]
+    }.set { ch_multiqc_input }
 
-
-}
-
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    COMPLETION SUMMARY
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
-
-workflow.onComplete {
-    if (params.email || params.email_on_fail) {
-        NfcoreTemplate.email(workflow, params, summary_params, projectDir, log, multiqc_report)
-    }
-    NfcoreTemplate.dump_parameters(workflow, params)
-    NfcoreTemplate.summary(workflow, params, log)
-    if (params.hook_url) {
-        NfcoreTemplate.IM_notification(workflow, params, summary_params, projectDir, log)
-    }
+    MULTIQC ( ch_multiqc_input )
 }
 
 /*
