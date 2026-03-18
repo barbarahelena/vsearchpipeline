@@ -11,6 +11,7 @@ process VSEARCH_USEARCHGLOBAL {
     output:
     path "all.concat.fasta"                                                                                               , emit: concatfasta
     path "count_table.txt"                                                                                                , emit: counts
+    path "mapping_stats.txt"                                                                                              , emit: mapping_stats
     tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed \'s/vsearch //; s/,.*//\''), emit: versions, topic: versions
 
     when:
@@ -25,7 +26,8 @@ process VSEARCH_USEARCHGLOBAL {
         --db $asvs \\
         --id $id \\
         --threads $task.cpus \\
-        --otutabout count_table.txt
+        --otutabout count_table.txt \\
+        2> mapping_stats.txt
     """
 
     stub:
@@ -33,5 +35,6 @@ process VSEARCH_USEARCHGLOBAL {
     """
     touch all.concat.fasta
     touch count_table.txt
+    touch mapping_stats.txt
     """
 }

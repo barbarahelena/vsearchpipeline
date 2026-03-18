@@ -20,6 +20,7 @@ include { VSEARCH_CLUSTERUNOISE                                 } from '../modul
 include { VSEARCH_SORT_REMOVE_SINGLETONS                        } from '../modules/local/vsearch/sort_remove_singletons'
 include { VSEARCH_UCHIMEDENOVO                                  } from '../modules/local/vsearch/uchimedenovo'
 include { VSEARCH_USEARCHGLOBAL                                 } from '../modules/local/vsearch/usearchglobal'
+include { VSEARCH_MAPPINGRATE                                   } from '../modules/local/vsearch/mappingrate'
 include { MAFFT                                                 } from '../modules/local/mafft'
 include { FASTTREE                                              } from '../modules/local/fasttree'
 include { SILVADATABASES                                        } from '../modules/local/silvadatabases'
@@ -144,6 +145,15 @@ workflow VSEARCHPIPELINE {
         VSEARCH_DEREPFULLLENGTHALL.out.concatreads,
         VSEARCH_UCHIMEDENOVO.out.asvs,
         params.usearch_id
+    )
+
+    //
+    // MODULE: Calculate per-sample mapping rates from usearch_global outputs
+    //
+    VSEARCH_MAPPINGRATE (
+        VSEARCH_USEARCHGLOBAL.out.counts,
+        VSEARCH_USEARCHGLOBAL.out.mapping_stats,
+        VSEARCH_FASTQFILTER.out.filter_stats.map { _meta, f -> f }.collect()
     )
     
     if(params.skip_tree != true){

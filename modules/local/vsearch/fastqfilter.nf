@@ -13,6 +13,7 @@ process VSEARCH_FASTQFILTER {
 
     output:
     tuple val(meta), path("*.filtered.fastq")                                                                         , emit: reads
+    tuple val(meta), path("*.filter_stats.txt")                                                                       , emit: filter_stats
     tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed \'s/vsearch //; s/,.*//\''), emit: versions, topic: versions
 
     when:
@@ -33,12 +34,14 @@ process VSEARCH_FASTQFILTER {
         $min \\
         $max \\
         $maxns \\
-        --fastqout $filtered
+        --fastqout $filtered \\
+        2> ${prefix}.filter_stats.txt
     """
 
     stub:
     def stub_prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch "${stub_prefix}.filtered.fastq"
+    touch "${stub_prefix}.filter_stats.txt"
     """
 }
