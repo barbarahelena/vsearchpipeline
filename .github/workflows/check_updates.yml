@@ -5,6 +5,9 @@ on:
     - cron: '0 8 * * 1'   # Every Monday at 08:00 UTC
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   check-updates:
     name: Check Bioconda / conda-forge versions
