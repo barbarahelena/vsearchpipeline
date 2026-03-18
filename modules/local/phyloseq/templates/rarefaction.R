@@ -20,10 +20,14 @@ if (length(ctrl_samples) > 0) {
 }
 
 ## Calculated rarefaction level
+min_counts <- min(colSums(phylo@otu_table))
+max_counts <- max(colSums(phylo@otu_table))
 rarelevel <- mean(colSums(phylo@otu_table)) - 3 * sd(rowSums(phylo@otu_table))
 if (rarelevel <= 15000) { rarelevel <- median(colSums(phylo@otu_table)) - IQR(colSums(phylo@otu_table)) }
 if (rarelevel <= 15000) { rarelevel <- 15000 }
-if (all(colSums(phylo@otu_table) < 15000)) { rarelevel <- min(colSums(phylo@otu_table)) }
+if (all(colSums(phylo@otu_table) < 15000)) { rarelevel <- min_counts }
+## Never auto-rarefy above the maximum sample depth — no samples would survive
+rarelevel <- min(rarelevel, max_counts)
 
 print(paste0('Max counts: ',  max(colSums(phylo@otu_table))))
 print(paste0('Min counts: ',  min(colSums(phylo@otu_table))))
@@ -35,20 +39,19 @@ if (sum(phylo@otu_table[1,]) != sum(phylo@otu_table[2,])) {
     rarefaction_yesno <- 'Rowsums are unequal, the data has not been rarefied yet.\n'
     print(rarefaction_yesno)
     user_rarelevel <- ${nf_rarelevel}
-    min_counts     <- min(colSums(phylo@otu_table))
     if (user_rarelevel == 0) {
         rarefaction_outcome <- paste0('Rarefaction level: ', rarelevel, '\n')
-    } else if (user_rarelevel > min_counts) {
-        ## User-defined level exceeds the minimum sample depth — fall back to
-        ## the auto-calculated level so we don't lose all samples (e.g. in tests).
+    } else if (user_rarelevel > max_counts) {
+        ## User-defined level exceeds the maximum sample depth — no samples
+        ## would survive rarefaction. Fall back to the auto-calculated level.
         warning(paste0(
             'User-defined rarefaction level (', user_rarelevel, ') exceeds the ',
-            'minimum sample count (', min_counts, '). ',
+            'maximum sample count (', max_counts, '). No samples would survive. ',
             'Falling back to the automatically calculated rarefaction level.'
         ))
         rarefaction_outcome <- paste0(
             'User-defined rarefaction level (', user_rarelevel,
-            ') exceeded minimum sample count (', min_counts,
+            ') exceeded maximum sample count (', max_counts,
             '). Auto-calculated rarefaction level used: ', rarelevel, '\n'
         )
     } else {
