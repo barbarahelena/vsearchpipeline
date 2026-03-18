@@ -1,0 +1,45 @@
+name: Check tool updates
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'   # Every Monday at 08:00 UTC
+  workflow_dispatch:
+
+jobs:
+  check-updates:
+    name: Check Bioconda / conda-forge versions
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # needed to commit versions_seen.json back
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run version check
+        env:
+          GMAIL_USER:         ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NOTIFY_EMAIL:       ${{ secrets.NOTIFY_EMAIL }}
+        run: python3 assets/check_updates.py
+
+      - name: Commit updated versions_seen.json
+        run: |
+          if git diff --quiet assets/versions_seen.json; then
+            echo "No changes to assets/versions_seen.json"
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add assets/versions_seen.json
+            git commit -m "chore: update versions_seen.json [skip ci]"
+            git push
+          fi

@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+env:
+  NXF_ANSI_LOG: false
+
+jobs:
+  test:
+    name: ${{ matrix.test_name }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - test_name: "test (with primers)"
+            profile: "test"
+          - test_name: "test (skip primers)"
+            profile: "test_noprimers"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java (required for Nextflow)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: latest-stable
+
+      - name: Run pipeline - ${{ matrix.test_name }}
+        run: |
+          nextflow run . \
+            -profile ${{ matrix.profile }},docker \
+            --outdir ./results_${{ matrix.profile }}
+
+      - name: Upload pipeline logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextflow-log-${{ matrix.profile }}
+          path: |
+            .nextflow.log
+            results_${{ matrix.profile }}/pipeline_info/

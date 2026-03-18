@@ -1,0 +1,52 @@
+name: Benchmark
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+env:
+  NXF_ANSI_LOG: false
+
+jobs:
+  benchmark:
+    name: Mock community benchmark
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java (required for Nextflow)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: latest-stable
+
+      - name: Run pipeline with mock community data
+        run: |
+          nextflow run . \
+            -profile test_benchmark,docker \
+            --outdir ./results_benchmark
+
+      - name: Validate ASV recovery
+        run: |
+          python3 assets/testdata/benchmark/validate_benchmark.py \
+            --asvs  results_benchmark/uchimedenovo/asvs_nonchimeras.fasta \
+            --reference assets/testdata/benchmark/mock_sequences_V4.fasta
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            results_benchmark/uchimedenovo/asvs_nonchimeras.fasta
+            results_benchmark/vsearch/
+            results_benchmark/pipeline_info/
+            .nextflow.log
