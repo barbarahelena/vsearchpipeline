@@ -7,7 +7,6 @@ on:
 
 env:
   NXF_ANSI_LOG: false
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   benchmark:
@@ -16,10 +15,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Java (required for Nextflow)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
@@ -38,16 +37,16 @@ jobs:
       - name: Validate ASV recovery
         run: |
           python3 assets/testdata/benchmark/validate_benchmark.py \
-            --asvs  results_benchmark/uchimedenovo/asvs_nonchimeras.fasta \
+            --asvs  results_benchmark/vsearch/asvs_nonchimeras.fasta \
             --reference assets/testdata/benchmark/mock_sequences_V4.fasta
 
       - name: Upload benchmark results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: benchmark-results
           path: |
-            results_benchmark/uchimedenovo/asvs_nonchimeras.fasta
+            results_benchmark/vsearch/asvs_nonchimeras.fasta
             results_benchmark/vsearch/
             results_benchmark/pipeline_info/
             .nextflow.log
