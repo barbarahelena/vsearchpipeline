@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Samplesheet reading and primer validation moved into `PIPELINE_INITIALISATION` (utils subworkflow)
 - Named `VSEARCHFLOW` wrapper workflow in `main.nf` following modern nf-core pattern
 - MultiQC skipped automatically with a warning when input exceeds 6000 FastQC files
+- GitHub Actions CI workflow (`ci.yml`) with matrix jobs for `test` and `test_noprimers` profiles
+- GitHub Actions benchmark workflow (`benchmark.yml`) triggered on release or manually; validates ASV recovery from 22-species mock community
+- GitHub Actions `check_updates.yml` workflow: checks Bioconda/conda-forge weekly for new tool versions and sends email notification via Gmail
+- `assets/check_updates.py` — Anaconda API-based version checker with bioconda → conda-forge fallback
+- `assets/tools.txt` — list of pipeline tool packages to monitor for updates
+- `assets/versions_seen.json` — tracks last known version per tool; auto-committed by the workflow
+- Stub SILVA databases for CI (`assets/testdata/small/SILVA_asv_db_test.fa.gz`, `SILVA_species_db_test.fa.gz`) filtered to taxa present in testdata
+- Stub SILVA databases for benchmark (`assets/testdata/benchmark/SILVA_benchmark_asv_db.fa.gz`, `SILVA_benchmark_species_db.fa.gz`) filtered to the 19 mock community genera
+- `conf/test_noprimers.config` — CI test profile without primer trimming
+- `conf/test_benchmark.config` — benchmark profile using mock community data with known 22-species composition
+- `assets/testdata/benchmark/mock_sequences_V4.fasta` — 22 reference ASV sequences for benchmark validation
+- `assets/testdata/benchmark/validate_benchmark.py` — validates recovered ASV count (21–23) and per-reference identity ≥ 0.97
+- `docs/check_updates.md` — setup instructions for the version monitoring workflow
 
 ### `Fixed`
 

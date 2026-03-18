@@ -1,0 +1,4 @@
+sample,fastq_1,fastq_2
+mock_1,assets/testdata/benchmark/mock_1_R1.fastq.gz,assets/testdata/benchmark/mock_1_R2.fastq.gz
+mock_2,assets/testdata/benchmark/mock_2_R1.fastq.gz,assets/testdata/benchmark/mock_2_R2.fastq.gz
+Mock_3,assets/testdata/benchmark/Mock_3_R1.fastq.gz,assets/testdata/benchmark/Mock_3_R2.fastq.gz
