@@ -3,10 +3,14 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v1.0.0 - Mar 16 2026
+## v1.0.0 - Mar 18 2026
 
 ### `Added`
 
+- New `VSEARCH_MAPPINGRATE` process that calculates per-sample mapping rates from existing `usearch_global` outputs without re-running vsearch
+- `VSEARCH_FASTQFILTER` now captures stderr (`*.filter_stats.txt`) to record post-filter read counts per sample, used as the denominator for mapping rate
+- `VSEARCH_USEARCHGLOBAL` now captures stderr (`mapping_stats.txt`) to record overall unique-sequence mapping rate
+- Mapping rate output: `mapping_rate_summary.tsv` (per-sample) and `mapping_rate_overall.txt` (global)
 - SILVA database version now configurable via pipeline parameter (`silva_db`)
 - PiCrust2 stratified option added
 - Decontam module added with negative control detection and nucleic acid concentration input
@@ -18,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### `Fixed`
 
+- Fixed rarefaction level auto-calculation: level is now capped at `max_counts` so it can never exceed the deepest sample and wipe all samples; `min_counts` and `max_counts` are computed once and reused throughout
+- Fixed rarefaction user-level guard: fallback to auto-calculated level now only triggers when `user_rarelevel > max_counts` (i.e. no samples would survive), instead of incorrectly triggering whenever the level exceeded the shallowest sample
+- Fixed decontam bugs including column name for nucleic acid concentration (`Nucl_Acid_Conc`)
+- Fixed overall mapping rate not being found due to incorrect search string (`"Matching unique query sequences"` vs `"Matching query sequences"`)
 - Fixed version collection for R-based processes
 - Fixed test file paths and testdata layout
 - Fixed schema for metamap input
