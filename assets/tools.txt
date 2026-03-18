@@ -1,0 +1,12 @@
+# Pipeline tools — one conda package name per line.
+# Lines starting with # are ignored.
+vsearch
+bioconductor-dada2
+picrust2
+bioconductor-phyloseq
+bioconductor-decontam
+mafft
+fasttree
+seqtk
+multiqc
+fastqc

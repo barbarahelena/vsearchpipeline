@@ -1,0 +1,12 @@
+{
+  "vsearch": "2.30.5",
+  "bioconductor-dada2": "1.38.0",
+  "picrust2": "2.6.3",
+  "bioconductor-phyloseq": "1.54.0",
+  "bioconductor-decontam": "1.30.0",
+  "mafft": "7.525",
+  "fasttree": "2.2.0",
+  "seqtk": "1.5",
+  "multiqc": "1.33",
+  "fastqc": "0.12.1"
+}
