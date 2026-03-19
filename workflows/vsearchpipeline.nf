@@ -37,8 +37,8 @@ include { PHYLOSEQ_FIXTAXONOMY as PHYLOSEQ_RAREFIED_FIXTAX      } from '../modul
 //
 // MODULE: nf-core modules
 //
-include { FASTQC  } from '../modules/nf-core/fastqc/main'
-include { MULTIQC } from '../modules/nf-core/multiqc/main'
+include { FASTQC       } from '../modules/nf-core/fastqc/main'
+include { MULTIQC      } from '../modules/nf-core/multiqc/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -285,6 +285,20 @@ workflow VSEARCHPIPELINE {
         }
     }
     
+    //
+    // Collect software versions as TSV (always runs, independent of MultiQC)
+    //
+    channel.topic('versions')
+        .map { process, tool, version -> "${process}\t${tool}\t${version}" }
+        .unique()
+        .collectFile(
+            name: 'software_versions.tsv',
+            storeDir: "${params.outdir}/pipeline_info",
+            seed: "process\tsoftware\tversion\n",
+            sort: true,
+            newLine: true
+        )
+
     //
     // MODULE: MultiQC
     //
