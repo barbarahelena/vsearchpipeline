@@ -60,13 +60,5 @@ saveRDS(tax, file = paste0("taxtable_", postfix, ".RDS"))
 ## VERSIONS                                   ##
 ################################################
 
-r.version       <- paste(R.version[['major']], R.version[['minor']], sep = '.')
-phyloseq.version <- as.character(packageVersion('phyloseq'))
-
-writeLines(
-    c('"${task.process}":',
-      paste0('    r-base: ',   r.version),
-      paste0('    phyloseq: ', phyloseq.version)
-    ),
-    'versions.yml'
-)
+writeLines(paste(R.version[['major']], R.version[['minor']], sep = '.'), 'version_r.txt')
+writeLines(as.character(packageVersion('phyloseq')), 'version_phyloseq.txt')

@@ -11,7 +11,9 @@ process PHYLOSEQ_MAKEOBJECT {
     output:
     path "phyloseq.RDS"             , emit: phyloseq
     path "phylo_raw_taxtable.csv"   , emit: taxtable
-    path "versions.yml"             , emit: versions, topic: versions
+    tuple val("${task.process}"), val('r-base'),    path("version_r.txt"),          emit: versions_r,          topic: versions
+    tuple val("${task.process}"), val('phyloseq'),  path("version_phyloseq.txt"),   emit: versions_phyloseq,   topic: versions
+    tuple val("${task.process}"), val('Biostrings'),path("version_biostrings.txt"), emit: versions_biostrings, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -24,6 +26,8 @@ process PHYLOSEQ_MAKEOBJECT {
     """
     touch phyloseq.RDS
     touch phylo_raw_taxtable.csv
-    touch versions.yml
+    touch version_r.txt
+    touch version_phyloseq.txt
+    touch version_biostrings.txt
     """
 }

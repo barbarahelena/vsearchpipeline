@@ -37,8 +37,9 @@ include { PHYLOSEQ_FIXTAXONOMY as PHYLOSEQ_RAREFIED_FIXTAX      } from '../modul
 //
 // MODULE: nf-core modules
 //
-include { FASTQC       } from '../modules/nf-core/fastqc/main'
-include { MULTIQC      } from '../modules/nf-core/multiqc/main'
+include { FASTQC          } from '../modules/nf-core/fastqc/main'
+include { MULTIQC         } from '../modules/nf-core/multiqc/main'
+include { GET_GIT_COMMIT  } from '../modules/local/get_gitcommit'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -286,10 +287,19 @@ workflow VSEARCHPIPELINE {
     }
     
     //
+    // MODULE: Record pipeline git commit hash
+    //
+    def commit_hash = "git -C ${projectDir} rev-parse HEAD".execute().text.trim()
+    GET_GIT_COMMIT ( commit_hash )
+
+    //
     // Collect software versions as TSV (always runs, independent of MultiQC)
     //
     channel.topic('versions')
-        .map { process, tool, version -> "${process}\t${tool}\t${version}" }
+        .map { process, tool, version ->
+            def v = (version instanceof Path) ? version.text.trim() : version.toString().trim()
+            "${process}\t${tool}\t${v}"
+        }
         .unique()
         .collectFile(
             name: 'software_versions.tsv',

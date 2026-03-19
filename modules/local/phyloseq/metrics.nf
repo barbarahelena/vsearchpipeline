@@ -15,7 +15,10 @@ process PHYLOSEQ_METRICS {
     path "shannon_index_*.pdf"          , emit: shannon
     path "species_richness_*.pdf"       , emit: richness
     path "metrics_overview_*.txt"       , emit: metrics
-    path "versions.yml"                 , emit: versions, topic: versions
+    tuple val("${task.process}"), val('r-base'),   path("version_r.txt"),        emit: versions_r,        topic: versions
+    tuple val("${task.process}"), val('phyloseq'), path("version_phyloseq.txt"), emit: versions_phyloseq, topic: versions
+    tuple val("${task.process}"), val('vegan'),    path("version_vegan.txt"),    emit: versions_vegan,    topic: versions
+    tuple val("${task.process}"), val('ggplot2'),  path("version_ggplot2.txt"),  emit: versions_ggplot2,  topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -34,6 +37,9 @@ process PHYLOSEQ_METRICS {
     touch shannon_index_${postfix}.pdf
     touch species_richness_${postfix}.pdf
     touch metrics_overview_${postfix}.txt
-    touch versions.yml
+    touch version_r.txt
+    touch version_phyloseq.txt
+    touch version_vegan.txt
+    touch version_ggplot2.txt
     """
 }

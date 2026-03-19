@@ -11,7 +11,9 @@ process PHYLOSEQ_DECONTAM {
     path "decontam_report.txt"          , emit: report
     path "decontam_contaminants.csv"    , emit: contaminants
     path "decontam_prev_plot.pdf"       , emit: prev_plot
-    path "versions.yml"                 , emit: versions, topic: versions
+    tuple val("${task.process}"), val('r-base'),   path("version_r.txt"),        emit: versions_r,        topic: versions
+    tuple val("${task.process}"), val('phyloseq'), path("version_phyloseq.txt"), emit: versions_phyloseq, topic: versions
+    tuple val("${task.process}"), val('decontam'), path("version_decontam.txt"), emit: versions_decontam, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -25,6 +27,8 @@ process PHYLOSEQ_DECONTAM {
     touch decontam_report.txt
     touch decontam_contaminants.csv
     touch decontam_prev_plot.pdf
-    touch versions.yml
+    touch version_r.txt
+    touch version_phyloseq.txt
+    touch version_decontam.txt
     """
 }

@@ -164,15 +164,6 @@ if (!has_negctrls && !has_conc) {
 ## VERSIONS                                   ##
 ################################################
 
-r.version       <- paste(R.version[['major']], R.version[['minor']], sep = '.')
-phyloseq.version <- as.character(packageVersion('phyloseq'))
-decontam.version <- as.character(packageVersion('decontam'))
-
-writeLines(
-    c('"${task.process}":',
-      paste0('    r-base: ',   r.version),
-      paste0('    phyloseq: ', phyloseq.version),
-      paste0('    decontam: ', decontam.version)
-    ),
-    'versions.yml'
-)
+writeLines(paste(R.version[['major']], R.version[['minor']], sep = '.'), 'version_r.txt')
+writeLines(as.character(packageVersion('phyloseq')), 'version_phyloseq.txt')
+writeLines(as.character(packageVersion('decontam')), 'version_decontam.txt')

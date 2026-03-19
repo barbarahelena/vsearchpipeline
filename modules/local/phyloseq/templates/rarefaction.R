@@ -118,15 +118,6 @@ saveRDS(phylo_rare, 'phyloseq_rarefied.RDS')
 ## VERSIONS                                   ##
 ################################################
 
-r.version       <- paste(R.version[['major']], R.version[['minor']], sep = '.')
-phyloseq.version <- as.character(packageVersion('phyloseq'))
-ggplot2.version  <- as.character(packageVersion('ggplot2'))
-
-writeLines(
-    c('"${task.process}":',
-      paste0('    r-base: ',   r.version),
-      paste0('    phyloseq: ', phyloseq.version),
-      paste0('    ggplot2: ',  ggplot2.version)
-    ),
-    'versions.yml'
-)
+writeLines(paste(R.version[['major']], R.version[['minor']], sep = '.'), 'version_r.txt')
+writeLines(as.character(packageVersion('phyloseq')), 'version_phyloseq.txt')
+writeLines(as.character(packageVersion('ggplot2')),  'version_ggplot2.txt')

@@ -319,17 +319,7 @@ writeLines(report, paste0("metrics_overview_", postfix, ".txt"))
 ## VERSIONS                                   ##
 ################################################
 
-r.version       <- paste(R.version[['major']], R.version[['minor']], sep = '.')
-phyloseq.version <- as.character(packageVersion('phyloseq'))
-vegan.version    <- as.character(packageVersion('vegan'))
-ggplot2.version  <- as.character(packageVersion('ggplot2'))
-
-writeLines(
-    c('"${task.process}":',
-      paste0('    r-base: ',   r.version),
-      paste0('    phyloseq: ', phyloseq.version),
-      paste0('    vegan: ',    vegan.version),
-      paste0('    ggplot2: ',  ggplot2.version)
-    ),
-    'versions.yml'
-)
+writeLines(paste(R.version[['major']], R.version[['minor']], sep = '.'), 'version_r.txt')
+writeLines(as.character(packageVersion('phyloseq')), 'version_phyloseq.txt')
+writeLines(as.character(packageVersion('vegan')),    'version_vegan.txt')
+writeLines(as.character(packageVersion('ggplot2')),  'version_ggplot2.txt')
