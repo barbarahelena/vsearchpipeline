@@ -13,11 +13,11 @@ report_lines <- c(report_lines,
     paste0("Phyloseq object loaded: ", nsamples(ps), " samples, ", ntaxa(ps), " taxa."))
 
 ## -------------------------------------------------------
-## Load samplesheet to get nucl_acid_conc if present
+## Load samplesheet to get nucleic_acid_conc if present
 ## -------------------------------------------------------
 meta <- read.csv("${samplesheet}", stringsAsFactors = FALSE)
-has_conc <- "Nucl_Acid_Conc" %in% colnames(meta) &&
-            any(!is.na(meta\$Nucl_Acid_Conc) & meta\$Nucl_Acid_Conc > 0)
+has_conc <- "nucleic_acid_conc" %in% colnames(meta) &&
+            any(!is.na(meta\$nucleic_acid_conc) & meta\$nucleic_acid_conc > 0)
 
 ## -------------------------------------------------------
 ## Detect negative controls (sample names containing NEGCON)
@@ -32,7 +32,7 @@ report_lines <- c(report_lines,
 
 if (!has_negctrls && !has_conc) {
     report_lines <- c(report_lines,
-        "WARNING: No negative controls (NEGCON) and no Nucl_Acid_Conc column found.",
+        "WARNING: No negative controls (NEGCON) and no nucleic_acid_conc column found.",
         "Skipping decontam. Saving original phyloseq as output.")
     writeLines(report_lines, "decontam_report.txt")
     write.csv(data.frame(ASV = character(0), method = character(0)),
@@ -48,7 +48,7 @@ if (!has_negctrls && !has_conc) {
     df_sd\$Ctrl <- df_sd\$sample %in% negctrlsvec
 
     if (has_conc) {
-        meta_sub <- meta[, c("sample", "Nucl_Acid_Conc")]
+        meta_sub <- meta[, c("sample", "nucleic_acid_conc")]
         # match by sample name
         df_sd <- merge(df_sd, meta_sub, by = "sample", all.x = TRUE)
     }
@@ -71,14 +71,14 @@ if (!has_negctrls && !has_conc) {
     cont_asvs <- c()
 
     ## -------------------------------------------------------
-    ## Method 1: Frequency-based (requires Nucl_Acid_Conc)
+    ## Method 1: Frequency-based (requires nucleic_acid_conc)
     ## -------------------------------------------------------
     if (has_conc) {
         ps_freq <- prune_samples(
-            !is.na(sample_data(ps)\$Nucl_Acid_Conc) & sample_data(ps)\$Nucl_Acid_Conc > 0,
+            !is.na(sample_data(ps)\$nucleic_acid_conc) & sample_data(ps)\$nucleic_acid_conc > 0,
             ps)
         contam_freq <- isContaminant(ps_freq, method = "frequency",
-                                     conc = "Nucl_Acid_Conc")
+                                     conc = "nucleic_acid_conc")
         cont_freq <- rownames(contam_freq)[which(contam_freq\$contaminant == TRUE)]
         n_freq <- sum(contam_freq\$contaminant, na.rm = TRUE)
         report_lines <- c(report_lines,
@@ -86,7 +86,7 @@ if (!has_negctrls && !has_conc) {
         cont_asvs <- union(cont_asvs, cont_freq)
     } else {
         report_lines <- c(report_lines,
-            "Frequency-based decontam skipped (no Nucl_Acid_Conc column).")
+            "Frequency-based decontam skipped (no nucleic_acid_conc column).")
     }
 
     ## -------------------------------------------------------
