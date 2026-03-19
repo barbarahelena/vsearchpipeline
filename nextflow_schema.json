@@ -403,6 +403,12 @@
                     "format": "file-path",
                     "description": "Path to a pre-downloaded SILVA species reference database (.fa.gz). If not set, the database will be downloaded automatically.",
                     "fa_icon": "fas fa-database"
+                },
+                "save_silva_db": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Save the downloaded SILVA databases to the output directory so they can be reused in future runs with --silva_asv_db and --silva_species_db.",
+                    "fa_icon": "fas fa-save"
                 }
             },
             "fa_icon": "fas fa-spell-check"

@@ -1,11 +1,7 @@
 process SEQTK_TRIMFQ {
     tag "$meta.id"
     label 'process_single_low'
-
-    conda "bioconda::seqtk=1.4"
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/seqtk:1.4--he4a0461_1':
-        'biocontainers/seqtk:1.4--h7132678_0' }"
+    label 'seqtk'
 
     input:
     tuple val(meta), path(reads)
