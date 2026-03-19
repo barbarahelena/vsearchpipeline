@@ -33,13 +33,13 @@ include { PHYLOSEQ_DECONTAM                                     } from '../modul
 include { PHYLOSEQ_RAREFACTION as PHYLOSEQ_RAREFIED             } from '../modules/local/phyloseq/rarefaction'
 include { PHYLOSEQ_METRICS as PHYLOSEQ_RAREFIED_METRICS         } from '../modules/local/phyloseq/metrics'
 include { PHYLOSEQ_FIXTAXONOMY as PHYLOSEQ_RAREFIED_FIXTAX      } from '../modules/local/phyloseq/fixtaxonomy'
+include { GET_GIT_COMMIT                                        } from '../modules/local/get_git_commit'
 
 //
 // MODULE: nf-core modules
 //
 include { FASTQC          } from '../modules/nf-core/fastqc/main'
 include { MULTIQC         } from '../modules/nf-core/multiqc/main'
-include { GET_GIT_COMMIT  } from '../modules/local/get_gitcommit'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
