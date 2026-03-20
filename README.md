@@ -22,11 +22,6 @@
 
 ## Usage
 
-> [!NOTE]
-> If you are new to Nextflow, please refer to [this page](https://nf-co.re/docs/usage/installation) on how
-> to set-up Nextflow. Make sure to [test your setup](https://nf-co.re/docs/usage/introduction#how-to-run-a-pipeline)
-> with `-profile test` before running the workflow on actual data.
-
 First, prepare a samplesheet with your input data that looks as follows:
 
 `samplesheet.csv`
