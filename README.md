@@ -9,7 +9,7 @@
 
 ## Introduction
 
-**vsearchpipeline** is a bioinformatics pipeline that uses [VSEARCH](https://github.com/torognes/vsearch) to infer ASVs and make a count table from 16S sequencing reads. The input is a samplesheet with sample names and file paths to the fastq files, and a sheet with primer sequences if primer trimming is necessary. The pipeline uses DADA2 for taxonomic assignment using the SILVA v.138.1 reference database. The resulting count table, taxonomic table and phylogenetic tree resulting from the pipeline are stored in a phyloseq object.
+**vsearchpipeline** is a bioinformatics pipeline that uses [VSEARCH](https://github.com/torognes/vsearch) to infer ASVs and make a count table from 16S sequencing reads. The input is a samplesheet with sample names and file paths to the fastq files, and a sheet with primer sequences if primer trimming is necessary. The pipeline uses DADA2 for taxonomic assignment using the SILVA reference database. The resulting count table, taxonomic table and phylogenetic tree resulting from the pipeline are stored in a phyloseq object.
 ![vsearch](https://github.com/user-attachments/assets/be411868-e12e-4a54-9b6d-60dad859814c)
 
 1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
@@ -23,7 +23,7 @@
 ## Usage
 
 > [!NOTE]
-> If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/usage/installation) on how
+> If you are new to Nextflow, please refer to [this page](https://nf-co.re/docs/usage/installation) on how
 > to set-up Nextflow. Make sure to [test your setup](https://nf-co.re/docs/usage/introduction#how-to-run-a-pipeline)
 > with `-profile test` before running the workflow on actual data.
 
@@ -52,7 +52,7 @@ If there are no primers to be trimmed, simply add the `--skip_primers` flag to t
 Now, you can run the pipeline using:
 
 ```bash
-nextflow run nf-core/vsearchpipeline \
+nextflow run barbarahelena/vsearchpipeline \
    -profile <docker/singularity/.../institute> \
    --input samplesheet.csv \
    --primers primers.csv \
@@ -71,10 +71,6 @@ For more details and further functionality, please refer to the [usage documenta
 All output of the different parts of the pipeline are stored in subdirectories of the output directory. These directories are named after the tools that were used ('vsearch', 'dada2', etc.). In the phyloseq folder, you can find the end result of the pipeline, which is the phyloseq object. Other important outputs are the multiqc report in the multiqc folder and the execution html report in the pipeline_info folder.
 
 For more details on the pipeline output, please refer to the [output documentation](https://github.com/barbarahelena/vsearchpipeline/blob/master/docs/output.md).
-
-## Credits
-
-This pipeline uses the nf-core template as much as possible.
 
 ## Citations
 
