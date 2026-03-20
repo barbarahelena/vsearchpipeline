@@ -50,8 +50,8 @@ theme_Publication <- function(base_size = 14, base_family = "sans") {
         + theme(
             plot.title   = element_text(face = "bold", size = rel(0.8), hjust = 0.5),
             text         = element_text(),
-            panel.background = element_rect(colour = NA),
-            plot.background  = element_rect(colour = NA),
+            panel.background = element_rect(colour = NA, fill = NA),
+            plot.background  = element_rect(colour = NA, fill = NA),
             panel.border     = element_rect(colour = NA),
             axis.title       = element_text(face = "bold", size = rel(0.8)),
             axis.title.y     = element_text(angle = 90, vjust = 2),
