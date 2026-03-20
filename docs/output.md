@@ -1,4 +1,4 @@
-# nf-core/vsearchpipeline: Output
+# vsearchpipeline: Output
 
 ## Introduction
 
@@ -9,25 +9,24 @@ This document describes the output produced by the pipeline. The directories lis
 The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes data using the following steps:
 
 - [FastQC](#fastqc) - Raw read QC
-- [Seqtk](#seqtk) - Trim primers
-- [VSEARCH](#vsearch) - make ASV fasta and count table
-  - [fastqmerge](#vsearch) - Merge forward and reverse reads
-  - [fastqfilter](#vsearch) - Filter reads
-  - [dereplicate sample](#vsearch) - Dereplicate reads per sample
-  - [dereplicate all](#vsearch) - Dereplicate all reads
-  - [cluster_unoise](#vsearch) - Cluster reads into ASVs
-  - [singleton_removal](#vsearch) - Sort and remove singletons
-  - [uchime_denovo](#vsearch) - Remove chimeras with uchime_denovo method
-  - [usearch_global](#vsearch) - Make count table from ASVs and dereplicated reads
-- [MAFFT](#mafft) - Multiple sequence alignment of ASVs
-- [FastTree](#fasttree) - Make phylogenetic tree of multiple sequence alignment
-- [DADA2 taxonomic assignment](#dada2-taxonomic-assignment) - Assign taxonomy to ASVs and add species using SILVA v138.1 database
-- [Phyloseq](#phyloseq) - Process data in phyloseq objects
-  - [Make phyloseq object](#make-phyloseq-object) - Make phyloseq object out of count table, tax table and tree (if present)
-  - [Rarefaction](#rarefaction) - Rarefy count table (experimental feature)
-  - [Nicer taxonomy](#nicer-taxonomy) - Make 'nice' taxonomic names from different columns depending on known phylogenetic levels
-- [MultiQC](#multiqc) - Aggregate report describing results and QC from the whole pipeline
-- [Pipeline information](#pipeline-information) - Report metrics generated during the workflow execution
+- [Seqtk](#seqtk) - Trim primers (optional)
+- [VSEARCH](#vsearch) - Make ASV fasta and count table
+- [VSEARCH mapping rate](#vsearch-mapping-rate) - Per-sample mapping rate summary
+- [MAFFT](#mafft) - Multiple sequence alignment of ASVs (optional)
+- [FastTree](#fasttree) - Phylogenetic tree from MSA (optional)
+- [SILVA databases](#silva-databases) - Downloaded reference databases (optional)
+- [DADA2 taxonomic assignment](#dada2-taxonomic-assignment) - Assign taxonomy using SILVA v138.2
+- [PICRUSt2](#picrust2) - Functional potential prediction (optional)
+- [Phyloseq](#phyloseq) - Downstream analysis in phyloseq objects
+  - [Make phyloseq object](#make-phyloseq-object)
+  - [Decontam](#decontam) - Remove contaminants (optional)
+  - [Nicer taxonomy](#nicer-taxonomy)
+  - [Metrics](#metrics)
+  - [Rarefaction](#rarefaction) (optional)
+- [MultiQC](#multiqc) - Aggregate QC report
+- [Pipeline information](#pipeline-information) - Execution reports and software versions
+
+---
 
 ### FastQC
 
@@ -49,7 +48,9 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 ![MultiQC - FastQC adapter content plot](images/mqc_fastqc_adapter.png)
 
 > [!NOTE]
-> The FastQC plots displayed in the MultiQC report shows _untrimmed_ reads. They may contain adapter sequence and potentially regions with low quality.
+> The FastQC plots displayed in the MultiQC report show _untrimmed_ reads. They may contain adapter sequence and potentially regions with low quality.
+
+---
 
 ### Seqtk
 
@@ -57,11 +58,14 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 <summary>Output files</summary>
 
 - `seqtk/`
-  - `*.trim.fastq.gz`: Trimmed reads.
+  - `*_1.trim.fastq.gz`: Primer-trimmed forward reads.
+  - `*_2.trim.fastq.gz`: Primer-trimmed reverse reads.
 
 </details>
 
-[Seqtk]() trims the forward and reverse reads. In this process, the length of the primers is trimmed off of the corresponding (forward or reverse) fastq file.
+[Seqtk](https://github.com/lh3/seqtk) trims primer sequences from the forward and reverse reads by removing a fixed number of bases equal to the length of the supplied primer sequences. This step is skipped if `--skip_primers` is set.
+
+---
 
 ### VSEARCH
 
@@ -69,25 +73,42 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 <summary>Output files</summary>
 
 - `vsearch/`
-  - `*.merged.fastq.gz`: merged fastq.gz per sample
-  - `*.filtered.fastq`: filtered fastq per sample
-  - `*.derep.fasta`: dereplicated fastq per sample
-  - `all.concat.fasta`: all reads concatenated in one fastq file
-  - `all.derep.fasta`: fasta file with unique sequences resulting from `fastq_uniques` for all concatenated reads
-  - `asvs.clustered.fasta`: ASV fasta resulting from clustering
-  - `asvs_nonchimeras.fasta`: fasta with ASVs that are left after `uchime3_denovo` chimera detection
-  - `chimeras.fasta`: chimeras that were filtered out by `uchime3_denovo`
-  - `count_table.txt`: count table resulting from `usearch_global`
+  - `asvs.clustered.fasta`: ASVs resulting from `cluster_unoise3`.
+  - `asvs_nonsingle.fasta`: ASVs after sorting and singleton removal.
+  - `asvs_nonchimeras.fasta`: Final ASV set after `uchime3_denovo` chimera removal. ASVs are labelled `ASV_` followed by a number.
+  - `chimeras.fasta`: Sequences identified as chimeras and removed.
+  - `count_table.txt`: Per-sample ASV count table from `usearch_global`.
+  - `*.filter_stats.txt`: Per-sample read filtering statistics from `fastq_filter`.
 
 </details>
 
-In a series of seven [VSEARCH](https://github.com/torognes/vsearch/wiki/VSEARCH-pipeline) processes, the forward and reverse reads are translated into an ASV set and count table.
+In a series of [VSEARCH](https://github.com/torognes/vsearch) processes, paired-end reads are converted into a final ASV set and count table:
 
-First, the reads are merged using `fastq_merge` (default maxdiffs 30, no minlen or maxlen setting), so that there is one fasta file per sample left. Next, `fastq_filter` is used to filter the reads (default maxee = 1 and maxns = 1, no minlen or maxlen filter), resulting in a filtered fasta file per sample.
+1. **Merge** — `fastq_mergepairs` merges forward and reverse reads per sample.
+2. **Filter** — `fastq_filter` filters merged reads (default: `maxee=1`, `maxns=1`).
+3. **Dereplicate per sample** — `fastq_uniques` dereplicates reads within each sample.
+4. **Dereplicate all** — all per-sample dereplicated reads are concatenated and dereplicated again (default: `minunique=2`).
+5. **Cluster** — `cluster_unoise3` denoises sequences into ASVs (default: `minsize=8`, `alpha=2`).
+6. **Sort & remove singletons** — `sortbysize` sorts ASVs and removes singletons (default: `minsize=2`).
+7. **Chimera removal** — `uchime3_denovo` removes chimeric sequences using the UNOISE3 algorithm.
+8. **Count table** — `usearch_global` maps the concatenated dereplicated reads back to the final ASVs to produce the count table.
 
-Samples are then dereplicated per sample using `fastq_uniques`, resulting in a dereplicated fasta per sample. All dereplicated reads are then combined in one channel (`all.concat.fasta`) to be dereplicated again (default minunique=2), resulting in `all.derep.fasta`. This dereplicating process is performed twice since the dereplication is more efficient if first performed at sample-level - in other words, the first round per sample is mostly for compression purposes.
+---
 
-The `cluster_unoise` function is used to denoise fasta sequences with the VSEARCH defaults for minsize (8) and alpha (2), resulting in `asvs.clustered.fasta`. ASVs are then sorted using `sortbysize` and singletons are removed (minsize set at 2), resulting in `asvs_nonsingle.fasta`. Chimeras are removed using the `uchime3_denovo` method that uses the UNOISE version 3 algorithm by Robert Edgar. Both chimeras that are filtered out (`chimeras.fasta`) and ASVs without chimeras (`asvs_nonchimeras.fasta`), labelled with `ASV_` followed by a number, are saved. Using global pairwise alignment with `usearch_global`, target sequences `all.concat.fasta` are compared to `asv_nonchimeras.fasta`.
+### VSEARCH mapping rate
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `vsearch/`
+  - `mapping_rate_summary.tsv`: Per-sample mapping rates (reads mapped / reads filtered).
+  - `mapping_rate_overall.txt`: Overall mapping rate across all samples.
+
+</details>
+
+A Python summary script calculates the fraction of filtered reads that were successfully mapped back to the final ASV set by `usearch_global`, giving a per-sample and overall mapping rate.
+
+---
 
 ### MAFFT
 
@@ -95,23 +116,42 @@ The `cluster_unoise` function is used to denoise fasta sequences with the VSEARC
 <summary>Output files</summary>
 
 - `mafft/`
-  - `asvs.msa`: multiple sequence alignment of the ASV sequences
+  - `asvs.msa`: Multiple sequence alignment of the final ASV sequences.
 
 </details>
 
-[MAFFT](https://mafft.cbrc.jp/alignment/software/) is a tool for multiple sequence alignment (msa). We need the msa to make a phylogenetic tree.
+[MAFFT](https://mafft.cbrc.jp/alignment/software/) produces a multiple sequence alignment of the ASVs, which is used as input for phylogenetic tree inference. This step is skipped if `--skip_tree` is set.
 
-### Fasttree
+---
+
+### FastTree
 
 <details markdown="1">
 <summary>Output files</summary>
 
 - `fasttree/`
-  - `asvs.msa.tree`: phylogenetic tree of ASVs
+  - `asvs.msa.tree`: Phylogenetic tree inferred from the MSA.
 
 </details>
 
-[FastTree](https://www.microbesonline.org/fasttree/) is a tool for inferring a phylogenetic tree. It is the default tool in this pipeline.
+[FastTree](https://www.microbesonline.org/fasttree/) infers an approximately maximum-likelihood phylogenetic tree from the MSA using the GTR+Gamma model. The tree is stored inside the phyloseq object if present. This step is skipped if `--skip_tree` is set.
+
+---
+
+### SILVA databases
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `silva_db/` _(only written if `--save_silva_db` is set)_
+  - `SILVA_asv_db.fa.gz`: SILVA v138.2 genus-level reference database for `assignTaxonomy`.
+  - `SILVA_species_db.fa.gz`: SILVA v138.2 species-level reference database for `addSpecies`.
+
+</details>
+
+If no pre-downloaded databases are supplied via `--silva_asv_db` and `--silva_species_db`, the pipeline downloads the SILVA v138.2 databases from Zenodo automatically. Use `--save_silva_db` to save them to the output directory so they can be reused in future runs via `--silva_asv_db` and `--silva_species_db`.
+
+---
 
 ### DADA2: taxonomic assignment
 
@@ -119,72 +159,110 @@ The `cluster_unoise` function is used to denoise fasta sequences with the VSEARC
 <summary>Output files</summary>
 
 - `dada2/`
-  - `taxtable.csv`: taxonomy table
+  - `taxtable.csv`: Taxonomy table with genus-level assignments (`assignTaxonomy`) and species-level assignments (`addSpecies`).
 
 </details>
 
-[DADA2](https://benjjneb.github.io/dada2/) is used for taxonomic assignment. In this process, we use the `assignTaxonomy` (minBoot=80) and `addSpecies` (allowmultiple=3 and tryrevcompl=true) functions using [SILVA v.138.1 ASVs and species databases for DADA2](https://zenodo.org/records/4587955). The resulting taxonomy table is saved as csv.
+[DADA2](https://benjjneb.github.io/dada2/) is used for taxonomic assignment against the SILVA v138.2 database. `assignTaxonomy` is run with `minBoot=80` and `addSpecies` with `allowMultiple=3` and `tryRC=TRUE` by default.
 
-### Phyloseq
+---
+
+### PICRUSt2
 
 <details markdown="1">
 <summary>Output files</summary>
 
-- `phyloseq/`
-  - `complete/`
-    - `phyloseq.RDS`: phyloseq object of count table, tax table and tree
-    - `phylo_raw_taxtable.csv`: taxtable with columns for taxonomic levels
-    - `taxtable_complete.RDS`: taxtable with assembled taxonomy in last column
-    - `phylogen_levels.csv`: this table shows the phylogenetic levels known as a percentage of all ASVs
-    - `phylogen_levels_top300.csv`: this table shows the phylogenetic levels known as a percentage of the top 300 most abundant ASVs
-    - `composition_species_complete.pdf`: composition plot at species level
-    - `composition_genus_complete.pdf`: composition plot at species level
-    - `composition_family_complete.pdf`: composition plot at species level
-    - `composition_phylum_complete.pdf`: composition plot at species level
-    - `shannon_index_complete.pdf`: shannon diversity histogram
-    - `species_richness_complete.pdf`: species richness histogram
-    - `metrics_overview_complete`: some metrics on composition and diversity
-  - `rarefied/`
-    - `phyloseq_rarefied.RDS`: this is the rarefied phyloseq object
-    - `rarefaction_plot.pdf`: histogram of total counts per sample with red line for defined rarefaction level
-    - `rarefaction_report.txt`: report of rarefaction process
-    - `taxtable_rarefied.RDS`: taxtable with assembled taxonomy in last column
-    - `phylogen_levels.csv`: this table shows the phylogenetic levels known as a percentage of all ASVs
-    - `phylogen_levels_top300.csv`: this table shows the phylogenetic levels known as a percentage of the top 300 most abundant ASVs
-    - `composition_species_rarefied.pdf`: composition plot at species level
-    - `composition_genus_rarefied.pdf`: composition plot at species level
-    - `composition_family_rarefied.pdf`: composition plot at species level
-    - `composition_phylum_rarefied.pdf`: composition plot at species level
-    - `shannon_index_rarefied.pdf`: shannon diversity histogram
-    - `species_richness_rarefied.pdf`: species richness histogram
-    - `metrics_overview_rarefied`: some metrics on composition and diversity
+- `picrust2/`
+  - PICRUSt2 output files with predicted functional profiles.
 
 </details>
 
+[PICRUSt2](https://github.com/picrust/picrust2) predicts the functional potential of the microbial community from the ASV sequences and count table. This step is skipped if `--skip_picrust` is set.
+
+---
+
+### Phyloseq
+
 #### Make phyloseq object
 
-[Phyloseq](https://joey711.github.io/phyloseq/index.html) is an R package for handling 16S data. The different dimensions of the data can be stored in one phyloseq object, in this case `phyloseq.RDS`. If there is a phylogenetic tree (i.e. `--skip_tree` is not set), the tree wil also be stored in the phyloseq object.
+<details markdown="1">
+<summary>Output files</summary>
 
-#### Rarefaction
+- `phyloseq/complete/`
+  - `phyloseq.RDS`: Phyloseq object containing the count table, taxonomy table, ASV sequences, and phylogenetic tree (if present).
+  - `phylo_raw_taxtable.csv`: Raw taxonomy table with one column per taxonomic level.
 
-As an optional feature, this pipeline also has a process to rarefy data. It's however better to do this separately after inspecting the data carefully. The rules this process now uses for determining the rarefaction level are as follows:
+</details>
 
-- Rarefaction level as defined by `rarelevel` parameter, if set; otherwise,
-- Mean - 3SDs: if that is >15000;
-- Median - IQR: if that is >15000;
-- 15000;
-- If there's no samples left above >15000; minimum total counts of the samples.
-  Empty ASVs are trimmed from the dataset after this procedure. The rarefied phyloseq is saved as `phyloseq_rarefied.RDS`. The plots with the distribution of sample counts are saved as `rarefaction_plot.pdf`.
+[Phyloseq](https://joey711.github.io/phyloseq/index.html) is an R package for microbiome data analysis. All data dimensions are combined into a single phyloseq object.
 
-The processes for nicer taxonomy and metrics are both executed on the complete phyloseq object and the rarefied phyloseq object. If `skip_taxonomy` is set to true, the metrics won't be generated either because this process depends on the assembled taxonomy resulting from the taxonomy process.
+#### Decontam
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `phyloseq/decontam/`
+  - `phyloseq_decontam.RDS`: Phyloseq object with contaminant ASVs removed.
+  - `decontam_report.txt`: Report listing identified contaminants.
+  - `decontam_contaminants.csv`: Table of ASVs flagged as contaminants.
+  - `decontam_prev_plot.pdf`: Prevalence plot used for contaminant identification.
+
+</details>
+
+[Decontam](https://benjjneb.github.io/decontam/) identifies and removes contaminant ASVs based on prevalence in negative control samples defined in the samplesheet. This step runs only if `--run_decontam` is set. The decontaminated phyloseq object is used as input for all downstream steps.
 
 #### Nicer taxonomy
 
-The process in which the taxonomy levels are made into one taxonomy name for publication (e.g. 'Roseburia hominis' or 'Roseburia spp.') are saved in `taxtable.RDS`. The known phylogenetic levels for all ASVs and the top 300 most abundant ASVs are saved in `phylogen_levels.csv` and `phylogen_levels_top300.csv`, respectively.
+<details markdown="1">
+<summary>Output files</summary>
+
+- `phyloseq/complete/`
+  - `taxtable_complete.RDS`: Taxonomy table with assembled human-readable names (e.g. _Roseburia hominis_ or _Roseburia_ spp.).
+  - `phylogen_levels_complete.csv`: Percentage of ASVs with a known assignment at each taxonomic level.
+  - `phylogen_levels_top300_complete.csv`: Same, restricted to the top 300 most abundant ASVs.
+- `phyloseq/rarefied/` _(same files with `_rarefied` suffix, if rarefaction is run)_
+
+</details>
+
+Taxonomy names are assembled from the most specific known taxonomic level, producing publication-ready names. This step is skipped if `--skip_fixtaxonomy` is set.
 
 #### Metrics
 
-In this process, compositional plots and diversity (Shannon, richness) histograms are made to give some overview of the output data.
+<details markdown="1">
+<summary>Output files</summary>
+
+- `phyloseq/complete/`
+  - `composition_phylum_complete.pdf`: Stacked bar chart at phylum level.
+  - `composition_family_complete.pdf`: Stacked bar chart at family level.
+  - `composition_genus_complete.pdf`: Stacked bar chart at genus level.
+  - `composition_species_complete.pdf`: Stacked bar chart at species level.
+  - `shannon_index_complete.pdf`: Shannon diversity histogram.
+  - `species_richness_complete.pdf`: Species richness histogram.
+  - `metrics_overview_complete.txt`: Summary of composition and diversity metrics.
+- `phyloseq/rarefied/` _(same files with `_rarefied` suffix, if rarefaction is run)_
+
+</details>
+
+Overview composition and diversity plots are generated for the complete (and optionally rarefied) dataset. This step is skipped if `--skip_metrics` is set.
+
+#### Rarefaction
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `phyloseq/rarefied/`
+  - `phyloseq_rarefied.RDS`: Rarefied phyloseq object.
+  - `rarefaction_plot.pdf`: Histogram of total counts per sample with a line indicating the rarefaction depth.
+  - `rarefaction_report.txt`: Report of the rarefaction process including the chosen depth.
+
+</details>
+
+Rarefaction subsamples all samples to an equal sequencing depth. The rarefaction level is set by `--rarelevel`; if not provided, an automatic rule is applied (mean − 3 SD, or median − IQR, with a minimum of 15,000 if achievable). This step is skipped if `--skip_rarefaction` is set.
+
+> [!NOTE]
+> It is generally recommended to inspect the count distribution carefully before deciding on a rarefaction level. Consider running the pipeline without rarefaction first.
+
+---
 
 ### MultiQC
 
@@ -192,15 +270,15 @@ In this process, compositional plots and diversity (Shannon, richness) histogram
 <summary>Output files</summary>
 
 - `multiqc/`
-  - `multiqc_report.html`: a standalone HTML file that can be viewed in your web browser.
-  - `multiqc_data/`: directory containing parsed statistics from the different tools used in the pipeline.
-  - `multiqc_plots/`: directory containing static images from the report in various formats.
+  - `multiqc_report.html`: Standalone HTML report summarising QC across all samples.
+  - `multiqc_data/`: Directory containing parsed statistics from all tools.
+  - `multiqc_plots/`: Static images from the report in various formats.
 
 </details>
 
-[MultiQC](http://multiqc.info) is a visualization tool that generates a single HTML report summarising all samples in your project. Most of the pipeline QC results are visualised in the report and further statistics are available in the report data directory.
+[MultiQC](http://multiqc.info) aggregates QC results from FastQC and the pipeline workflow summary into a single interactive HTML report.
 
-Results generated by MultiQC collate pipeline QC from supported tools e.g. FastQC. The pipeline has special steps which also allow the software versions to be reported in the MultiQC output for future traceability. For more information about how to use MultiQC reports, see <http://multiqc.info>.
+---
 
 ### Pipeline information
 
@@ -208,11 +286,13 @@ Results generated by MultiQC collate pipeline QC from supported tools e.g. FastQ
 <summary>Output files</summary>
 
 - `pipeline_info/`
-  - Reports generated by Nextflow: `execution_report.html`, `execution_timeline.html`, `execution_trace.txt` and `pipeline_dag.dot`/`pipeline_dag.svg`.
-  - Reports generated by the pipeline: `pipeline_report.html`, `pipeline_report.txt` and `software_versions.yml`. The `pipeline_report*` files will only be present if the `--email` / `--email_on_fail` parameter's are used when running the pipeline.
-  - Reformatted samplesheet files used as input to the pipeline: `samplesheet.valid.csv`.
-  - Parameters used by the pipeline run: `params.json`.
+  - `execution_report.html`: Nextflow execution report with per-process resource usage.
+  - `execution_timeline.html`: Timeline of process execution.
+  - `execution_trace.txt`: Detailed trace of all tasks.
+  - `pipeline_dag.dot` / `pipeline_dag.svg`: Directed acyclic graph of the workflow.
+  - `software_versions.tsv`: Tab-separated table of all software versions used (`process`, `software`, `version`).
+  - `git_commit_hash.txt`: Git commit hash of the exact pipeline version used, for full reproducibility.
 
 </details>
 
-[Nextflow](https://www.nextflow.io/docs/latest/tracing.html) provides excellent functionality for generating various reports relevant to the running and execution of the pipeline. This will allow you to troubleshoot errors with the running of the pipeline, and also provide you with other information such as launch commands, run times and resource usage.
+[Nextflow](https://www.nextflow.io/docs/latest/tracing.html) generates execution reports, timelines and traces for every run. The pipeline also records all software tool versions to `software_versions.tsv` and the exact pipeline commit to `git_commit_hash.txt`.
