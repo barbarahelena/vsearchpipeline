@@ -1,5 +1,5 @@
 {
-  "vsearch": "2.30.5",
+  "vsearch": "2.30.6",
   "bioconductor-dada2": "1.38.0",
   "picrust2": "2.6.3",
   "bioconductor-phyloseq": "1.54.0",
