@@ -3,6 +3,39 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+Strict syntax and static typing throughout. **Requires Nextflow 26.10.0 or later.**
+
+### `Changed`
+
+- Strict syntax everywhere (`nextflow lint` reports no errors); typed processes for all local modules; typed workflows for `main.nf` and `VSEARCHPIPELINE`
+- All analysis parameters declared once, with types, in a `params` block in `main.nf`. Wrong types, misspelled parameters and missing input files now stop the run at launch
+- Parameter validation uses `nf-schema` 3.0.0 instead of the deprecated `nf-validation`; JSON schemas converted to draft 2020-12
+- nf-core utility subworkflows replaced by current versions, tracked in `modules.json`; nf-core FastQC (0.13.0) and MultiQC (1.35) modules updated
+- Results are published through workflow outputs (`output` block in `main.nf`) instead of `publishDir`; the results folder layout is unchanged
+- `--max_cpus`, `--max_memory`, `--max_time` replaced by `process.resourceLimits` (they were not enforced)
+- Tool versions collected from the `versions` topic channel; MultiQC now lists all tools (it previously showed only FastQC)
+- `git_commit_hash.txt` written by Nextflow itself; no longer needs git inside a container
+- `task.ext.args` is now passed to every tool
+- The `arm` profile also builds conda environments for `osx-64`, so `-profile mamba,arm` works on Apple Silicon
+- nf-test suite (`tests/default.nf.test`): the test profile with checksums of the scientific results, and a stub run with all optional steps
+- CI: `nextflow lint` job, then nf-test on Nextflow 26.10.0 and latest stable
+
+### `Fixed`
+
+- Primer trimming was silently skipped on macOS without containers (`zcat` there only reads `.Z` files)
+- Boolean parameters set to `false` on the command line (e.g. `--skip_picrust false`) were treated as `true`
+- ASV numbering could differ between runs of the same data (per-sample files were concatenated in task finish order)
+- `--help` showed `cluster_minsize` default 8; the default used is 10
+- `*.merged.fastq.gz` files were not gzip-compressed
+- `ext.args` set in a config was ignored
+- Fasttree, seqtk and vsearch versions were recorded incorrectly; PICRUSt2 and dereplication stub blocks were broken
+
+### `Removed`
+
+- `--hook_url` (Slack/Teams notifications), dropped from the nf-core utilities
+
 ## v1.0.0 - Mar 18 2026
 
 ### `Added`

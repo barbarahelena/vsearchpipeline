@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This bioinformatic pipeline uses VSEARCH to generate a count table (samples+ASVs) from 16S sequencing reads. The input is a samplesheet with sample names and file paths to the fastq files, and a sheet with primer sequences if primer trimming is necessary. The pipeline uses DADA2 for taxonomic assignment (as opposed to VSEARCH sintax) using the SILVA v.138.1 database. The resulting count table, taxonomic table and phylogenetic tree resulting from the pipeline are stored in a phyloseq object.
+This bioinformatic pipeline uses VSEARCH to generate a count table (samples+ASVs) from 16S sequencing reads. The input is a samplesheet with sample names and file paths to the fastq files, and a sheet with primer sequences if primer trimming is necessary. The pipeline uses DADA2 for taxonomic assignment (as opposed to VSEARCH sintax) using the SILVA v138.2 database. The resulting count table, taxonomic table and phylogenetic tree resulting from the pipeline are stored in a phyloseq object.
 
 As an experimental feature, there is a rarefaction/pruning process and a process that assembles 'nice' assembled taxonomic names ('Roseburia spp.' if species level is unknown, Lachnospiraceae spp., if genus level is unknown, etcetera). It is possible to skip these processes. Either way, both the unrarefied and the rarefied phyloseq objects are stored in the output directory.
 
@@ -92,10 +92,10 @@ When `--run_decontam` is enabled, the **rarefaction step uses the decontam outpu
 
 ## Primersheet input
 
-If you want the primers to be trimmed, you need to specify a file path to a csv with the forward and reverse primer sequences that were used.
+Primer trimming is off by default (`--skip_primers` defaults to `true`). To trim primers, turn it on and specify a csv with the forward and reverse primer sequences that were used:
 
 ```bash
---primers '[path to primersheet file]'
+--skip_primers false --primers '[path to primersheet file]'
 ```
 
 This csv should look as follows:
@@ -117,8 +117,10 @@ An [example primersheet](../testdata/Primers.csv) has been provided with the pip
 The typical command for running the pipeline is as follows:
 
 ```bash
-nextflow run vsearchpipeline --input ./Samplesheet.csv --outdir ./results --primers ./Primers.csv -profile singularity
+nextflow run barbarahelena/vsearchpipeline --input ./Samplesheet.csv --outdir ./results --skip_primers false --primers ./Primers.csv -profile singularity
 ```
+
+The pipeline requires Nextflow 26.10.0 or later.
 
 This will launch the pipeline with the `singularity` configuration profile. See below for more information about profiles.
 
@@ -155,6 +157,33 @@ outdir: './results/'
 
 You can also generate such `YAML`/`JSON` files via [nf-core/launch](https://nf-co.re/launch) or by writing them manually.
 
+### Parameter checks
+
+All analysis parameters are declared with a type (see the `params` block in `main.nf` and [the parameter documentation](parameters.md)). When the pipeline starts, Nextflow converts command-line values to these types and stops before running anything if:
+
+- a value has the wrong type, e.g. `--cluster_minsize abc`
+- a parameter is misspelled or unknown, e.g. `--clustr_minsize 5`
+- an input file does not exist, e.g. `--silva_asv_db /no/such/file.fa.gz`
+
+Boolean parameters can be set with `true` or `false` on the command line (`--skip_picrust false`).
+
+Help on the command line:
+
+- `--help`: the most important parameters
+- `--help <parameter>`: details on one parameter, e.g. `--help cluster_minsize`
+- `--help_full --show_hidden`: all parameters, including hidden ones
+
+### Apple Silicon Macs
+
+Several tools (the phyloseq R stack, MAFFT 7.520, PICRUSt2) have no Apple Silicon (arm64) builds. Add the `arm` profile, which uses the Intel (x86_64) builds through Rosetta:
+
+```bash
+nextflow run barbarahelena/vsearchpipeline -profile test,mamba,arm --outdir results   # conda/mamba
+nextflow run barbarahelena/vsearchpipeline -profile test,docker,arm --outdir results  # Docker
+```
+
+Conda environments are built on first use. Set `NXF_CONDA_CACHEDIR` (e.g. `export NXF_CONDA_CACHEDIR=~/.nextflow/conda`) so they are built once and reused across runs.
+
 ### HPC settings
 
 I had some problems getting Nextflow pipelines to work on an HPC. This is a short list of issues I encountered with solutions. These solutions are all implemented, although for slurm use and the job name replacement you have to use `-profile snellius`.
@@ -166,6 +195,10 @@ Docker usually does not work on HPCs for security reasons; the alternative is Si
 #### Retry failed jobs
 
 Because slurm jobs might occasionally fail, some processes have the `error_retry` label. With this label, jobs are retried 5 times before the pipeline fails. This is already implemented in the pipeline.
+
+#### Conda on an HPC
+
+Conda works on an HPC too: use `-profile snellius,conda` (or `<your profile>,mamba`), without `arm`. Compute nodes often have no internet, and Nextflow builds the environments on the node that runs `nextflow`. Set `NXF_CONDA_CACHEDIR` to a shared folder so environments built once (where internet is available) are reused. Containers (Singularity/Apptainer) remain the most reproducible choice.
 
 #### Use slurm
 
@@ -204,12 +237,36 @@ git clone git@github.com:barbarahelena/vsearchpipeline.git
 
 It is a good idea to specify a pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the same tag, you'll be running the same version of the pipeline, even if there have been changes to the code since. You can specify the version number when running the pipeline with `-r` (one hyphen) - eg. `-r 1.3.1`. Of course, you can switch to another version by changing the number after the `-r` flag.
 
-This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future. For example, at the bottom of the MultiQC reports.
+This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future. For example, at the bottom of the MultiQC reports. The exact pipeline commit is written to `<outdir>/pipeline_info/git_commit_hash.txt`, and all tool versions to `software_versions.tsv` in the same folder.
+
+Results are reproducible between runs: the same input and parameters give byte-identical ASVs, count tables and taxonomy, independent of the order in which tasks finish, and the same results with conda and with containers.
 
 To further assist in reproducbility, you can use share and re-use [parameter files](#running-the-pipeline) to repeat pipeline runs with the same settings without having to write out a command with every single parameter.
 
 > [!NOTE]
 > If you wish to share such profile (such as upload as supplementary material for academic publications), make sure to NOT include cluster specific paths to files, nor institutional specific profiles.
+
+## Testing the pipeline
+
+The pipeline has an [nf-test](https://www.nf-test.com/) test suite in `tests/`:
+
+- `-profile test` runs the pipeline on the small test dataset and compares the checksums of the scientific results (ASVs, count table, mapping rates, taxonomy, phyloseq tables, rarefaction report) and the list of output files with `tests/default.nf.test.snap`. These results are identical with conda and containers, on macOS and Linux.
+- `-profile test -stub, all optional steps` checks that every step, including PICRUSt2 and decontam, is wired correctly (stub blocks only, no real computation).
+
+```bash
+nf-test test --profile test,docker            # Linux, or CI
+nf-test test --profile test,mamba,arm         # Apple Silicon Mac with conda
+```
+
+If a change is meant to alter results, update the snapshot with `--update-snapshot` and review the diff of `tests/default.nf.test.snap` before committing it.
+
+Check syntax and types without running anything:
+
+```bash
+nextflow lint .
+```
+
+CI runs `nextflow lint`, then nf-test on the minimum supported Nextflow version and the latest stable release.
 
 ## Core Nextflow arguments
 
@@ -231,16 +288,20 @@ They are loaded in sequence, so later profiles can overwrite earlier profiles.
 If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`. This is _not_ recommended, since it can lead to different results on different machines dependent on the computer enviroment.
 
 - `test`
-  - A profile with a complete configuration for automated testing
+  - A profile with a complete configuration for automated testing (with primer trimming)
   - Includes links to test data so needs no other parameters
+- `test_noprimers`
+  - Like `test`, without primer trimming
 - `docker`
   - A generic configuration profile to be used with [Docker](https://docker.com/)
 - `singularity`
   - A generic configuration profile to be used with [Singularity](https://sylabs.io/docs/)
 - `apptainer`
   - A generic configuration profile to be used with [Apptainer](https://apptainer.org/)
-- `conda`
-  - A generic configuration profile to be used with [Conda](https://conda.io/docs/). Please only use Conda as a last resort i.e. when it's not possible to run the pipeline with Docker, Singularity, Podman, Shifter, Charliecloud, or Apptainer.
+- `conda` / `mamba`
+  - A generic configuration profile to be used with [Conda](https://conda.io/docs/) (`mamba` uses the faster mamba solver). Containers are preferred for reproducibility; Conda is fully supported, and gives the same results.
+- `arm`
+  - For Apple Silicon Macs: combine with `docker` or `mamba`/`conda` to use x86_64 images and environments through Rosetta (see [Apple Silicon Macs](#apple-silicon-macs)).
 - `snellius`
   - A configuration specific for the ['Snellius HPC'](). It uses the settings described in the paragraph about ['HPC settings'](#hpc-settings). In short: singularity, slurm configuration and job name configuration. You can use this profile for other HPCs but you should replace the name of the partition where jobs are submitted to.
 
@@ -262,6 +323,16 @@ Whilst the default requirements set within the pipeline will hopefully work for 
 
 To change the resource requests, edit the labels in `conf/base.config` directly, or supply a custom config file with `-c`.
 
+No single task requests more than `process.resourceLimits` (default: 16 CPUs, 128 GB, 240 h, set in `conf/base.config`). To match your machine or cluster, set it in a custom config:
+
+```groovy
+process {
+    resourceLimits = [ cpus: 8, memory: 32.GB, time: 48.h ]
+}
+```
+
+This replaces the `--max_cpus`, `--max_memory` and `--max_time` parameters of earlier versions.
+
 ### Custom Containers
 
 In some cases you may wish to change which container or conda environment a step of the pipeline uses for a particular tool. Containers and software are sourced from [BioContainers](https://biocontainers.pro/) or [Bioconda](https://bioconda.github.io/).
@@ -271,14 +342,6 @@ To use a different container, override `container` for the relevant process labe
 ### Custom Tool Arguments
 
 To pass additional arguments to a particular tool, set `ext.args` for the relevant process in a custom config file. See the [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for details.
-
-## Azure Resource Requests
-
-To be used with the `azurebatch` profile by specifying the `-profile azurebatch`.
-We recommend providing a compute `params.vm_type` of `Standard_D16_v3` VMs by default but these options can be changed if required.
-
-Note that the choice of VM size depends on your quota and the overall workload during the analysis.
-For a thorough list, please refer the [Azure Sizes for virtual machines in Azure](https://docs.microsoft.com/en-us/azure/virtual-machines/sizes).
 
 ## Running in the background
 
