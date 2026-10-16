@@ -177,6 +177,24 @@ def parsePrimersheet(csv) {
 }
 
 //
+// Git commit of the pipeline code that is running.
+// workflow.commitId is set when run from a repository (nextflow run barbarahelena/vsearchpipeline -r ...);
+// otherwise ask git, and return 'unknown' rather than crash when git is missing (e.g. some HPC login nodes).
+//
+def gitCommitHash() {
+    if (workflow.commitId) {
+        return workflow.commitId
+    }
+    try {
+        def proc = ['git', '-C', projectDir.toString(), 'rev-parse', 'HEAD'].execute()
+        def out  = proc.text.trim()
+        return proc.waitFor() == 0 && out ? out : 'unknown'
+    } catch (Exception _e) {
+        return 'unknown'
+    }
+}
+
+//
 // Generate methods description for MultiQC
 //
 def methodsDescriptionText(mqc_methods_yaml) {

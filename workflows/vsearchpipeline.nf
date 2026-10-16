@@ -8,6 +8,7 @@ include { paramsSummaryMap          } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc      } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { workflowVersionToYAML     } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText    } from '../subworkflows/local/utils_vsearchpipeline_pipeline'
+include { gitCommitHash             } from '../subworkflows/local/utils_vsearchpipeline_pipeline'
 
 //
 // MODULE: Local modules
@@ -34,7 +35,6 @@ include { PHYLOSEQ_DECONTAM                                     } from '../modul
 include { PHYLOSEQ_RAREFACTION as PHYLOSEQ_RAREFIED             } from '../modules/local/phyloseq/rarefaction'
 include { PHYLOSEQ_METRICS as PHYLOSEQ_RAREFIED_METRICS         } from '../modules/local/phyloseq/metrics'
 include { PHYLOSEQ_FIXTAXONOMY as PHYLOSEQ_RAREFIED_FIXTAX      } from '../modules/local/phyloseq/fixtaxonomy'
-include { GET_GIT_COMMIT                                        } from '../modules/local/get_git_commit'
 
 //
 // MODULE: nf-core modules
@@ -350,10 +350,15 @@ workflow VSEARCHPIPELINE {
     }
 
     //
-    // MODULE: Record pipeline git commit hash
+    // Record the pipeline git commit. Written by Nextflow itself: no task, container or git in a container needed.
     //
-    def commit_hash = "git -C ${projectDir} rev-parse HEAD".execute().text.trim()
-    GET_GIT_COMMIT ( commit_hash )
+    def ch_commit_hash = channel.value("""
+        You can obtain the exact version of the vsearchpipeline used for this run
+        by cloning the repo and running the Git command:
+
+        git checkout ${gitCommitHash()}
+        """.stripIndent())
+        .collectFile(name: 'git_commit_hash.txt')
 
     //
     // Collect software versions from the 'versions' topic channel.
@@ -441,7 +446,7 @@ workflow VSEARCHPIPELINE {
     phyloseq_decontam = ch_out_phyloseq_decontam
     phyloseq_rarefied = ch_out_phyloseq_rarefied
     multiqc           = MULTIQC.out.report.mix(MULTIQC.out.data, MULTIQC.out.plots)
-    pipeline_info     = GET_GIT_COMMIT.out.commit_hash
+    pipeline_info     = ch_commit_hash
 }
 
 /*
