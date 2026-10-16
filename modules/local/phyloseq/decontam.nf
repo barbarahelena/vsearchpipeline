@@ -1,22 +1,23 @@
+nextflow.enable.types = true
+
 process PHYLOSEQ_DECONTAM {
     label 'process_multi_low'
     label 'phyloseq'
 
     input:
-    path phyloseq
-    path samplesheet
+    phyloseq: Path
+    samplesheet: Path   // needs NEGCON-labelled samples and/or a nucl_acid_conc column
 
     output:
-    path "phyloseq_decontam.RDS"        , emit: phyloseq
-    path "decontam_report.txt"          , emit: report
-    path "decontam_contaminants.csv"    , emit: contaminants
-    path "decontam_prev_plot.pdf"       , emit: prev_plot
-    tuple val("${task.process}"), val('r-base'),   path("version_r.txt"),        emit: versions_r,        topic: versions
-    tuple val("${task.process}"), val('phyloseq'), path("version_phyloseq.txt"), emit: versions_phyloseq, topic: versions
-    tuple val("${task.process}"), val('decontam'), path("version_decontam.txt"), emit: versions_decontam, topic: versions
+    phyloseq     = file("phyloseq_decontam.RDS")
+    report       = file("decontam_report.txt")
+    contaminants = file("decontam_contaminants.csv")
+    prev_plot    = file("decontam_prev_plot.pdf")
 
-    when:
-    task.ext.when == null || task.ext.when
+    topic:
+    tuple(task.process, 'r-base',   file("version_r.txt"))        >> 'versions'
+    tuple(task.process, 'phyloseq', file("version_phyloseq.txt")) >> 'versions'
+    tuple(task.process, 'decontam', file("version_decontam.txt")) >> 'versions'
 
     script:
     template 'decontam.R'

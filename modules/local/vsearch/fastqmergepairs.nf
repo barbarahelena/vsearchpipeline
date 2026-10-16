@@ -1,52 +1,52 @@
+nextflow.enable.types = true
+
 process VSEARCH_FASTQMERGEPAIRS {
-    tag "$meta.id"
+    tag meta.id
     label 'process_multi_low'
     label 'vsearch'
     label 'error_retry'
 
     input:
-    tuple val(meta), path(reads)
-    val allowmergestagger
-    val maxdiffs
-    val minlength
-    val maxlength
-    val maxdiffpct
+    tuple(meta: Map, reads: List<Path>)   // [ forward, reverse ]
+    allowmergestagger: Boolean
+    maxdiffs: Integer                     // 0 = vsearch default
+    minlength: Integer                    // 0 = no minimum
+    maxlength: Integer                    // 0 = no maximum
+    maxdiffpct: Integer                   // 100 = vsearch default
 
     output:
-    tuple val(meta), path("*.merged.fastq.gz")                                                                            , emit: reads
-    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\''), emit: versions, topic: versions
+    reads = tuple(meta, file("*.merged.fastq.gz"))
 
-    when:
-    task.ext.when == null || task.ext.when
+    topic:
+    tuple(task.process, 'vsearch', eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\'')) >> 'versions'
 
     script:
-    def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    def fwd_reads = reads[0]
-    def rev_reads = reads[1]
-    def merged = "${prefix}.merged.fastq.gz"
+    def args                  = task.ext.args ?: ''
+    def prefix                = task.ext.prefix ?: "${meta.id}"
     def allowmergestagger_arg = allowmergestagger ? "--fastq_allowmergestagger" : ''
-    def maxdiffs_arg = maxdiffs ? "--fastq_maxdiffs ${maxdiffs}" : ''
-    def minmerge = minlength != 0 ? "--fastq_minmergelen ${minlength}" : ''
-    def maxmerge = maxlength != 0 ? "--fastq_maxmergelen ${maxlength}" : ''
-    def maxdiffpct_arg = maxdiffpct != 100 ? "--fastq_maxdiffpct ${maxdiffpct}" : ''
-
+    def maxdiffs_arg          = maxdiffs ? "--fastq_maxdiffs ${maxdiffs}" : ''
+    def minmerge              = minlength != 0 ? "--fastq_minmergelen ${minlength}" : ''
+    def maxmerge              = maxlength != 0 ? "--fastq_maxmergelen ${maxlength}" : ''
+    def maxdiffpct_arg        = maxdiffpct != 100 ? "--fastq_maxdiffpct ${maxdiffpct}" : ''
     """
     vsearch \\
-        --fastq_mergepairs ${fwd_reads} \\
-        --reverse ${rev_reads} \\
+        --fastq_mergepairs ${reads[0]} \\
+        --reverse ${reads[1]} \\
         ${maxdiffs_arg} \\
         ${allowmergestagger_arg} \\
         ${minmerge} \\
         ${maxmerge} \\
         ${maxdiffpct_arg} \\
-        --fastqout ${merged}
+        ${args} \\
+        --fastqout ${prefix}.merged.fastq
+
+    # --fastqout writes plain text whatever the extension, so compress explicitly
+    gzip ${prefix}.merged.fastq
     """
 
     stub:
-    def stub_prefix = task.ext.prefix ?: "${meta.id}"
-    def stub_merged = "${stub_prefix}.merged.fastq.gz"
+    def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${stub_merged}
+    touch ${prefix}.merged.fastq.gz
     """
 }

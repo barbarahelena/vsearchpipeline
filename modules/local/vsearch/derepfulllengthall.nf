@@ -1,41 +1,40 @@
+nextflow.enable.types = true
+
 process VSEARCH_DEREPFULLLENGTHALL {
-    //tag "$meta.id"
     label 'process_single_med'
     label 'vsearch'
     label 'error_retry'
 
     input:
-    path(reads)
-    val strand
-    val fastawidth
-    val minunique
+    reads: List<Path>     // per-sample dereplicated fasta files
+    strand: String        // 'plus' or 'both'
+    fastawidth: Integer   // 0 = no line wrapping
+    minunique: Integer
 
     output:
-    path("all.concat.fasta")                                                                                              , emit: concatreads
-    path("all.derep.fasta")                                                                                               , emit: reads
-    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\''), emit: versions, topic: versions
-    
-    when:
-    task.ext.when == null || task.ext.when
+    concatreads = file("all.concat.fasta")
+    reads       = file("all.derep.fasta")
+
+    topic:
+    tuple(task.process, 'vsearch', eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\'')) >> 'versions'
 
     script:
     def args = task.ext.args ?: ''
-
     """
-    cat $reads > all.concat.fasta
-    
+    cat ${reads.join(' ')} > all.concat.fasta
+
     vsearch \\
         --fastx_uniques all.concat.fasta \\
         --fastaout all.derep.fasta \\
-        --strand $strand \\
+        --strand ${strand} \\
         --sizein \\
         --sizeout \\
-        --fasta_width $fastawidth \\
-        --minuniquesize $minunique
+        --fasta_width ${fastawidth} \\
+        ${args} \\
+        --minuniquesize ${minunique}
     """
 
     stub:
-    def args = task.ext.args ?: ''
     """
     touch all.concat.fasta
     touch all.derep.fasta

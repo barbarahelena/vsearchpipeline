@@ -1,26 +1,25 @@
+nextflow.enable.types = true
+
 process MAFFT {
     label 'process_single_low'
     label 'mafft'
 
     input:
-    path asvs
+    asvs: Path
 
     output:
-    path "asvs.msa"                                                                                    , emit: msa
-    tuple val("${task.process}"), val('mafft'), eval('mafft --version 2>&1 | sed -nE \'s/^v([0-9.]+).*/\\1/p\''), emit: versions, topic: versions
+    msa = file("asvs.msa")
 
-    when:
-    task.ext.when == null || task.ext.when
+    topic:
+    tuple(task.process, 'mafft', eval('mafft --version 2>&1 | sed -nE \'s/^v([0-9.]+).*/\\1/p\'')) >> 'versions'
 
     script:
     def args = task.ext.args ?: ''
     """
-    mafft --auto $asvs > asvs.msa
+    mafft --auto ${args} ${asvs} > asvs.msa
     """
 
     stub:
-    def args = task.ext.args ?: ''
-    
     """
     touch asvs.msa
     """

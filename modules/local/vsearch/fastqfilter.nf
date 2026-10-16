@@ -1,47 +1,47 @@
+nextflow.enable.types = true
+
 process VSEARCH_FASTQFILTER {
-    tag "$meta.id"
+    tag meta.id
     label 'process_single_low'
     label 'vsearch'
     label 'error_retry'
 
     input:
-    tuple val(meta), path(reads)
-    val maxee
-    val minlength
-    val maxlength
-    val maxns
+    tuple(meta: Map, reads: Path)
+    maxee: Number       // expected errors can be fractional, e.g. 0.5
+    minlength: Integer  // 0 = no minimum
+    maxlength: Integer  // 0 = no maximum
+    maxns: Integer      // 0 = vsearch default
 
     output:
-    tuple val(meta), path("*.filtered.fastq")                                                                         , emit: reads
-    tuple val(meta), path("*.filter_stats.txt")                                                                       , emit: filter_stats
-    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\''), emit: versions, topic: versions
+    reads        = tuple(meta, file("*.filtered.fastq"))
+    filter_stats = tuple(meta, file("*.filter_stats.txt"))
 
-    when:
-    task.ext.when == null || task.ext.when
+    topic:
+    tuple(task.process, 'vsearch', eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\'')) >> 'versions'
 
     script:
-    def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    def filtered = "${prefix}.filtered.fastq"
-    def min = minlength != 0 ? "--fastq_minlen ${minlength}" : ""
-    def max = maxlength != 0 ? "--fastq_maxlen ${maxlength}" : ""
+    def args      = task.ext.args ?: ''
+    def prefix    = task.ext.prefix ?: "${meta.id}"
+    def min       = minlength != 0 ? "--fastq_minlen ${minlength}" : ""
+    def max       = maxlength != 0 ? "--fastq_maxlen ${maxlength}" : ""
     def maxns_arg = maxns != 0 ? "--fastq_maxns ${maxns}" : ""
-
     """
     vsearch \\
-        --fastq_filter $reads \\
-        --fastq_maxee $maxee \\
-        $min \\
-        $max \\
-        $maxns_arg \\
-        --fastqout $filtered \\
+        --fastq_filter ${reads} \\
+        --fastq_maxee ${maxee} \\
+        ${min} \\
+        ${max} \\
+        ${maxns_arg} \\
+        ${args} \\
+        --fastqout ${prefix}.filtered.fastq \\
         2> ${prefix}.filter_stats.txt
     """
 
     stub:
-    def stub_prefix = task.ext.prefix ?: "${meta.id}"
+    def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch "${stub_prefix}.filtered.fastq"
-    touch "${stub_prefix}.filter_stats.txt"
+    touch ${prefix}.filtered.fastq
+    touch ${prefix}.filter_stats.txt
     """
 }

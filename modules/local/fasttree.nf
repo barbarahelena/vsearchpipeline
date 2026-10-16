@@ -1,17 +1,18 @@
+nextflow.enable.types = true
+
 process FASTTREE {
     label 'process_single_medium'
     label 'error_retry'
     label 'fasttree'
 
     input:
-    path msa
+    msa: Path
 
     output:
-    path "asvs.msa.tree"                                                                                                                            , emit: tree
-    tuple val("${task.process}"), val('fasttree'), eval('fasttree -help 2>&1 | sed -nE \'1s/^FastTree ([0-9.]+).*/\\1/p\''), emit: versions, topic: versions
+    tree = file("asvs.msa.tree")
 
-    when:
-    task.ext.when == null || task.ext.when
+    topic:
+    tuple(task.process, 'fasttree', eval('fasttree -help 2>&1 | sed -nE \'1s/^FastTree ([0-9.]+).*/\\1/p\'')) >> 'versions'
 
     script:
     def args = task.ext.args ?: ''
@@ -20,12 +21,12 @@ process FASTTREE {
         -nt \\
         -gtr \\
         -gamma \\
-        $msa \\
+        ${args} \\
+        ${msa} \\
         > asvs.msa.tree
     """
 
     stub:
-    def args = task.ext.args ?: ''
     """
     touch asvs.msa.tree
     """

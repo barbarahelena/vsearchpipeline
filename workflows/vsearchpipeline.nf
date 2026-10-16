@@ -281,7 +281,7 @@ workflow VSEARCHPIPELINE {
     if (!params.skip_fixtaxonomy) {
         PHYLOSEQ_COMPLETE_FIXTAX (
             ch_phyloseq,
-            true
+            'complete'
         )
         ch_out_phyloseq_complete = ch_out_phyloseq_complete.mix(
             PHYLOSEQ_COMPLETE_FIXTAX.out.taxonomy,
@@ -293,7 +293,7 @@ workflow VSEARCHPIPELINE {
             PHYLOSEQ_COMPLETE_METRICS (
                 ch_phyloseq,
                 PHYLOSEQ_COMPLETE_FIXTAX.out.taxonomy,
-                true
+                'complete'
             )
             ch_out_phyloseq_complete = ch_out_phyloseq_complete.mix(
                 PHYLOSEQ_COMPLETE_METRICS.out.speciescomp,
@@ -322,7 +322,7 @@ workflow VSEARCHPIPELINE {
         if (!params.skip_fixtaxonomy) {
             PHYLOSEQ_RAREFIED_FIXTAX (
                 PHYLOSEQ_RAREFIED.out.phyloseq,
-                false
+                'rarefied'
             )
             ch_out_phyloseq_rarefied = ch_out_phyloseq_rarefied.mix(
                 PHYLOSEQ_RAREFIED_FIXTAX.out.taxonomy,
@@ -334,7 +334,7 @@ workflow VSEARCHPIPELINE {
                 PHYLOSEQ_RAREFIED_METRICS (
                     PHYLOSEQ_RAREFIED.out.phyloseq,
                     PHYLOSEQ_RAREFIED_FIXTAX.out.taxonomy,
-                    false
+                    'rarefied'
                 )
                 ch_out_phyloseq_rarefied = ch_out_phyloseq_rarefied.mix(
                     PHYLOSEQ_RAREFIED_METRICS.out.speciescomp,

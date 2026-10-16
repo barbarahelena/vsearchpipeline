@@ -17,7 +17,7 @@ rownames(taxtable) <- asvs_names[match(rownames(taxtable), asv_seqs)]
 taxtable   <- as.matrix(taxtable)
 counttable <- as.matrix(counttable)
 
-if (as.logical("${treepresent}")) {
+if (${tree.name != 'NO_TREEFILE' ? 'TRUE' : 'FALSE'}) {   # NO_TREEFILE = placeholder when --skip_tree
     tree        <- ape::read.tree("${tree}")
     tree_rooted <- phytools::midpoint.root(tree)
     ps <- phyloseq(otu_table(counttable, taxa_are_rows = TRUE),

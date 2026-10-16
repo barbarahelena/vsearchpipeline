@@ -1,32 +1,33 @@
+nextflow.enable.types = true
+
 process VSEARCH_UCHIMEDENOVO {
     label 'process_single_low'
     label 'vsearch'
 
     input:
-    path(reads)
-    val label
+    reads: Path
+    label: String   // prefix for ASV names, e.g. 'ASV_'
 
     output:
-    path "chimeras.fasta"                                                                                                 , emit: chimeras
-    path "asvs_nonchimeras.fasta"                                                                                         , emit: asvs
-    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\''), emit: versions, topic: versions
+    chimeras = file("chimeras.fasta")
+    asvs     = file("asvs_nonchimeras.fasta")
 
-    when:
-    task.ext.when == null || task.ext.when
+    topic:
+    tuple(task.process, 'vsearch', eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\'')) >> 'versions'
 
     script:
     def args = task.ext.args ?: ''
     """
     vsearch \\
-        --uchime3_denovo $reads \\
+        --uchime3_denovo ${reads} \\
         --chimeras chimeras.fasta \\
         --nonchimeras asvs_nonchimeras.fasta \\
-        --threads $task.cpus \\
-        --relabel $label
+        --threads ${task.cpus} \\
+        ${args} \\
+        --relabel ${label}
     """
 
     stub:
-    def args = task.ext.args ?: ''
     """
     touch chimeras.fasta
     touch asvs_nonchimeras.fasta

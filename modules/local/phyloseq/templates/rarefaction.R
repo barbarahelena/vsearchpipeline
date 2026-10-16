@@ -38,7 +38,7 @@ print(paste0('SD counts: ',   sd(colSums(phylo@otu_table))))
 if (sum(phylo@otu_table[1,]) != sum(phylo@otu_table[2,])) {
     rarefaction_yesno <- 'Rowsums are unequal, the data has not been rarefied yet.\n'
     print(rarefaction_yesno)
-    user_rarelevel <- ${nf_rarelevel}
+    user_rarelevel <- ${rarelevel}
     if (user_rarelevel == 0) {
         rarefaction_outcome <- paste0('Rarefaction level: ', rarelevel, '\n')
     } else if (user_rarelevel > max_counts) {
@@ -62,7 +62,7 @@ if (sum(phylo@otu_table[1,]) != sum(phylo@otu_table[2,])) {
 
     phylo_rare <- tryCatch({
         rare <- rarefy_even_depth(phylo, sample.size = rarelevel,
-                                  rngseed = ${nf_seed}, replace = FALSE,
+                                  rngseed = ${task.ext.seed ?: 1234}, replace = FALSE,
                                   trimOTUs = TRUE, verbose = TRUE)
         if (nsamples(rare) == 0) {
             stop(paste0(
@@ -93,7 +93,7 @@ if (sum(phylo@otu_table[1,]) != sum(phylo@otu_table[2,])) {
                      numbers_after_rarefaction)
 } else {
     rarefaction_yesno <- 'Phyloseq object seems already rarefied.\n'
-    user_rarelevel <- ${nf_rarelevel}
+    user_rarelevel <- ${rarelevel}
     rarelevel <- ifelse(user_rarelevel != 0, user_rarelevel, 0)
     print(rarefaction_yesno)
     report <- paste0(numbers_before_rarefaction,

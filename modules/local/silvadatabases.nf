@@ -1,16 +1,16 @@
+nextflow.enable.types = true
+
 process SILVADATABASES {
     label 'process_single_med'
 
     output:
-    path "SILVA_asv_db.fa.gz"                                        , emit: asvdb
-    path "SILVA_species_db.fa.gz"                                    , emit: speciesdb
-    tuple val("${task.process}"), val('SILVA'), eval('echo "138.2"') , emit: versions, topic: versions
+    asvdb     = file("SILVA_asv_db.fa.gz")
+    speciesdb = file("SILVA_species_db.fa.gz")
 
-    when:
-    task.ext.when == null || task.ext.when
+    topic:
+    tuple(task.process, 'SILVA', '138.2') >> 'versions'
 
     script:
-
     """
     wget -c https://zenodo.org/records/14169026/files/silva_nr99_v138.2_toGenus_trainset.fa.gz?download=1 \\
         -O SILVA_asv_db.fa.gz
@@ -19,7 +19,6 @@ process SILVADATABASES {
     """
 
     stub:
-  
     """
     touch SILVA_asv_db.fa.gz
     touch SILVA_species_db.fa.gz

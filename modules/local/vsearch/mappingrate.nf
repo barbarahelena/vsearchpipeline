@@ -1,20 +1,21 @@
+nextflow.enable.types = true
+
 process VSEARCH_MAPPINGRATE {
     label 'process_single_low'
     label 'python'
 
     input:
-    path(count_table)
-    path(mapping_stats)
-    path(filter_stats)   // list of per-sample *.filter_stats.txt files
+    count_table: Path
+    mapping_stats: Path
+    filter_stats: List<Path>   // per-sample *.filter_stats.txt files
 
     output:
-    path "mapping_rate_summary.tsv"  , emit: summary
-    path "mapping_rate_overall.txt"  , emit: overall
-    // eval() only works for Bash scripts, so the Python script writes its own version file
-    tuple val("${task.process}"), val('python'), path("version_python.txt"), emit: versions, topic: versions
+    summary = file("mapping_rate_summary.tsv")
+    overall = file("mapping_rate_overall.txt")
 
-    when:
-    task.ext.when == null || task.ext.when
+    topic:
+    // eval() only works for Bash scripts, so the Python script writes its own version file
+    tuple(task.process, 'python', file("version_python.txt")) >> 'versions'
 
     script:
     """

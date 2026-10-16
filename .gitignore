@@ -8,3 +8,5 @@ testing*
 *.pyc
 null/
 results_outputs/
+results_docker/
+results_typed/
