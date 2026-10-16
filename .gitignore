@@ -10,3 +10,7 @@ null/
 results_outputs/
 results_docker/
 results_typed/
+results_6b/
+.nf-test/
+.nf-test.log
+.nf-test-docker/

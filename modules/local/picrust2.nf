@@ -24,5 +24,7 @@ process PICRUST2 {
     stub:
     """
     mkdir -p picrust_output/EC_metagenome_out picrust_output/KO_metagenome_out
+    touch picrust_output/EC_metagenome_out/pred_metagenome_unstrat.tsv.gz
+    touch picrust_output/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz
     """
 }
