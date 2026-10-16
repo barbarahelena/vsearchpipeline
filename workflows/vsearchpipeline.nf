@@ -4,7 +4,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { paramsSummaryMap          } from 'plugin/nf-validation'
+include { paramsSummaryMap          } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc      } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText    } from '../subworkflows/local/utils_vsearchpipeline_pipeline'
 
@@ -316,7 +316,7 @@ workflow VSEARCHPIPELINE {
         ? file(params.multiqc_methods_description, checkIfExists: true)
         : file("$projectDir/assets/methods_description_template.yml", checkIfExists: true)
 
-    def workflow_summary    = paramsSummaryMultiqc(paramsSummaryMap(workflow))
+    def workflow_summary    = paramsSummaryMultiqc(paramsSummaryMap())
     def ch_workflow_summary = channel.value(workflow_summary).collectFile(name: 'workflow_summary_mqc.yaml')
 
     def methods_description = methodsDescriptionText(ch_multiqc_custom_methods_description)

@@ -25,21 +25,21 @@ process VSEARCH_FASTQMERGEPAIRS {
     def fwd_reads = reads[0]
     def rev_reads = reads[1]
     def merged = "${prefix}.merged.fastq.gz"
-    def allowmergestagger = allowmergestagger ? "--fastq_allowmergestagger" : ''
-    def maxdiffs = maxdiffs ? "--fastq_maxdiffs ${maxdiffs}" : ''
+    def allowmergestagger_arg = allowmergestagger ? "--fastq_allowmergestagger" : ''
+    def maxdiffs_arg = maxdiffs ? "--fastq_maxdiffs ${maxdiffs}" : ''
     def minmerge = minlength != 0 ? "--fastq_minmergelen ${minlength}" : ''
     def maxmerge = maxlength != 0 ? "--fastq_maxmergelen ${maxlength}" : ''
-    def maxdiffpct = maxdiffpct != 100 ? "--fastq_maxdiffpct ${maxdiffpct}" : ''
+    def maxdiffpct_arg = maxdiffpct != 100 ? "--fastq_maxdiffpct ${maxdiffpct}" : ''
 
     """
     vsearch \\
         --fastq_mergepairs ${fwd_reads} \\
         --reverse ${rev_reads} \\
-        ${maxdiffs} \\
-        ${allowmergestagger} \\
+        ${maxdiffs_arg} \\
+        ${allowmergestagger_arg} \\
         ${minmerge} \\
         ${maxmerge} \\
-        ${maxdiffpct} \\
+        ${maxdiffpct_arg} \\
         --fastqout ${merged}
     """
 

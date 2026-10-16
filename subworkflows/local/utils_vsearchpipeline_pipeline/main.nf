@@ -8,17 +8,13 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { UTILS_NFVALIDATION_PLUGIN } from '../../nf-core/utils_nfvalidation_plugin'
-include { paramsSummaryMap          } from 'plugin/nf-validation'
-include { fromSamplesheet           } from 'plugin/nf-validation'
+include { UTILS_NFSCHEMA_PLUGIN     } from '../../nf-core/utils_nfschema_plugin'
+include { paramsSummaryMap          } from 'plugin/nf-schema'
+include { samplesheetToList         } from 'plugin/nf-schema'
 include { UTILS_NEXTFLOW_PIPELINE   } from '../../nf-core/utils_nextflow_pipeline'
 include { completionEmail           } from '../../nf-core/utils_nfcore_pipeline'
 include { completionSummary         } from '../../nf-core/utils_nfcore_pipeline'
-include { dashedLine                } from '../../nf-core/utils_nfcore_pipeline'
-include { nfCoreLogo                } from '../../nf-core/utils_nfcore_pipeline'
-include { imNotification            } from '../../nf-core/utils_nfcore_pipeline'
 include { UTILS_NFCORE_PIPELINE     } from '../../nf-core/utils_nfcore_pipeline'
-include { workflowCitation          } from '../../nf-core/utils_nfcore_pipeline'
 
 /*
 ========================================================================================
@@ -30,13 +26,14 @@ workflow PIPELINE_INITIALISATION {
 
     take:
     version           // boolean: Display version and exit
-    help              // boolean: Display help text
     validate_params   // boolean: Boolean whether to validate parameters against the schema at runtime
-    monochrome_logs   // boolean: Do not use coloured log outputs
     nextflow_cli_args //   array: List of positional nextflow CLI args
     outdir            //  string: The output directory where the results will be saved
     input             //  string: Path to input samplesheet
     primers           //  string: Path to primers CSV, or null
+    help              // boolean: Display help message and exit
+    help_full         // boolean: Show the full help message
+    show_hidden       // boolean: Show hidden parameters in the help message
 
     main:
 
@@ -53,16 +50,31 @@ workflow PIPELINE_INITIALISATION {
     //
     // Validate parameters and generate parameter summary to stdout
     //
-    pre_help_text  = nfCoreLogo(monochrome_logs)
-    post_help_text = '\n' + workflowCitation() + '\n' + dashedLine(monochrome_logs)
-    def String workflow_command = "nextflow run ${workflow.manifest.name} -profile <docker/singularity/.../institute> --input samplesheet.csv --outdir <OUTDIR>"
-    UTILS_NFVALIDATION_PLUGIN (
-        help,
-        workflow_command,
-        pre_help_text,
-        post_help_text,
+    def before_text = """
+-\033[2m----------------------------------------------------\033[0m-
+\033[0;34m  ${workflow.manifest.name} ${workflow.manifest.version}\033[0m
+-\033[2m----------------------------------------------------\033[0m-
+"""
+    def after_text = """${workflow.manifest.doi ? "\n* The pipeline\n" : ""}${workflow.manifest.doi.tokenize(",").collect { doi -> "    https://doi.org/${doi.trim().replace('https://doi.org/', '')}" }.join("\n")}${workflow.manifest.doi ? "\n" : ""}
+* The nf-core framework
+    https://doi.org/10.1038/s41587-020-0439-x
+
+* Software dependencies
+    https://github.com/barbarahelena/vsearchpipeline/blob/main/CITATIONS.md
+"""
+    def command = "nextflow run ${workflow.manifest.name} -profile <docker/singularity/.../institute> --input samplesheet.csv --outdir <OUTDIR>"
+
+    UTILS_NFSCHEMA_PLUGIN (
+        workflow,
         validate_params,
-        "nextflow_schema.json"
+        null,
+        help,
+        help_full,
+        show_hidden,
+        before_text,
+        after_text,
+        command,
+        null
     )
 
     //
@@ -75,26 +87,25 @@ workflow PIPELINE_INITIALISATION {
     //
     // Create channel from input samplesheet
     //
-    Channel
-        .fromSamplesheet('input')
+    def ch_reads = channel
+        .fromList(samplesheetToList(input, "${projectDir}/assets/schema_input.json"))
         .map { meta, fastq_1, fastq_2 ->
             def new_meta = meta + [ single_end: !fastq_2 ]
             def reads    = fastq_2 ? [ fastq_1, fastq_2 ] : [ fastq_1 ]
             [ new_meta, reads ]
         }
-        .set { ch_reads }
 
     //
     // Create and validate primer channel (if primers are not skipped)
     //
+    def ch_primers
     if (!params.skip_primers) {
         if (!primers) {
             error "[vsearchpipeline] params.primers is not set. Please provide a primers file with --primers or set --skip_primers true."
         }
-        channel.fromPath(primers, checkIfExists: true)
+        ch_primers = channel.fromPath(primers, checkIfExists: true)
             .map { csv -> parsePrimersheet(csv) }
             .first()
-            .set { ch_primers }
     } else {
         ch_primers = channel.empty()
     }
@@ -118,20 +129,16 @@ workflow PIPELINE_COMPLETION {
     plaintext_email // boolean: Send plain-text email instead of HTML
     outdir          //    path: Path to output directory where results will be published
     monochrome_logs // boolean: Disable ANSI colour codes in log output
-    hook_url        //  string: hook URL for notifications
 
     main:
 
-    summary_params = paramsSummaryMap(workflow)
+    def summary_params = paramsSummaryMap()
 
     workflow.onComplete {
         if (email || email_on_fail) {
             completionEmail(summary_params, email, email_on_fail, plaintext_email, outdir, monochrome_logs)
         }
         completionSummary(monochrome_logs)
-        if (hook_url) {
-            imNotification(summary_params, hook_url)
-        }
     }
 
     workflow.onError {
@@ -178,13 +185,10 @@ def methodsDescriptionText(mqc_methods_yaml) {
     meta.manifest_map = workflow.manifest.toMap()
 
     if (meta.manifest_map.doi) {
-        def temp_doi_ref = ""
-        String[] manifest_doi = meta.manifest_map.doi.tokenize(",")
-        for (String doi_ref : manifest_doi) {
-            def clean = doi_ref.replace('https://doi.org/', '').replace(' ', '')
-            temp_doi_ref += "(doi: <a href='https://doi.org/${clean}'>${clean}</a>), "
-        }
-        meta["doi_text"] = temp_doi_ref[0..-3]
+        meta["doi_text"] = meta.manifest_map.doi.tokenize(",")
+            .collect { doi_ref -> doi_ref.replace('https://doi.org/', '').replace(' ', '') }
+            .collect { clean -> "(doi: <a href='https://doi.org/${clean}'>${clean}</a>)" }
+            .join(", ")
     } else {
         meta["doi_text"] = ""
     }

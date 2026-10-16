@@ -7,8 +7,6 @@
 ----------------------------------------------------------------------------------------
 */
 
-nextflow.enable.dsl = 2
-
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     IMPORT FUNCTIONS / MODULES / SUBWORKFLOWS / WORKFLOWS
@@ -60,13 +58,14 @@ workflow {
     //
     PIPELINE_INITIALISATION (
         params.version,
-        params.help,
         params.validate_params,
-        params.monochrome_logs,
         args,
         params.outdir,
         params.input,
-        params.primers
+        params.primers,
+        params.help,
+        params.help_full.toString().toBoolean(),   // CLI flags can arrive as the string "true"
+        params.show_hidden.toString().toBoolean()
     )
 
     //
@@ -85,8 +84,7 @@ workflow {
         params.email_on_fail,
         params.plaintext_email,
         params.outdir,
-        params.monochrome_logs,
-        params.hook_url
+        params.monochrome_logs
     )
 }
 

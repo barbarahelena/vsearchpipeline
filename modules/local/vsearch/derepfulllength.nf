@@ -31,7 +31,7 @@ process VSEARCH_DEREPFULLLENGTH {
     stub:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def uniq = "${prefix}.derep.fastq"
+    def uniq = "${prefix}.derep.fasta"
     """
     touch $uniq
     """
