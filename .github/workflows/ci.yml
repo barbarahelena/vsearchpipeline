@@ -12,21 +12,13 @@ on:
 
 env:
   NXF_ANSI_LOG: false
+  # Minimum Nextflow version the pipeline supports (keep in sync with manifest.nextflowVersion)
+  NXF_MIN_VER: "26.10.0"
 
 jobs:
-  test:
-    name: ${{ matrix.test_name }}
+  lint:
+    name: nextflow lint
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - test_name: "test (with primers)"
-            profile: "test"
-          - test_name: "test (skip primers)"
-            profile: "test_noprimers"
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -40,19 +32,88 @@ jobs:
       - name: Install Nextflow
         uses: nf-core/setup-nextflow@v2
         with:
-          version: latest-stable
+          version: ${{ env.NXF_MIN_VER }}
 
-      - name: Run pipeline - ${{ matrix.test_name }}
+      # Fails (exit 1) on errors: strict syntax and static type errors.
+      # Warnings are printed but do not fail the job.
+      - name: Lint pipeline
+        run: nextflow lint . -o concise
+
+  nf-test:
+    name: nf-test (Nextflow ${{ matrix.nxf_ver }})
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        nxf_ver:
+          - "26.10.0"
+          - "latest-stable"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Java (required for Nextflow)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: ${{ matrix.nxf_ver }}
+
+      - name: Install nf-test
+        uses: nf-core/setup-nf-test@v1
+        with:
+          version: "0.9.2"
+
+      # tests/default.nf.test: the test profile for real (checksums of ASVs, count table,
+      # taxonomy, ... must match tests/default.nf.test.snap) and a stub run with all
+      # optional steps (PICRUSt2, decontam) on.
+      - name: Run nf-test
+        run: nf-test test --profile test,docker --verbose
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nf-test-${{ matrix.nxf_ver }}
+          path: |
+            .nf-test/tests/*/meta/nextflow.log
+            .nf-test.log
+
+  test-noprimers:
+    name: test (skip primers)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Java (required for Nextflow)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: ${{ env.NXF_MIN_VER }}
+
+      - name: Run pipeline - test_noprimers
         run: |
           nextflow run . \
-            -profile ${{ matrix.profile }},docker \
-            --outdir ./results_${{ matrix.profile }}
+            -profile test_noprimers,docker \
+            --outdir ./results
 
       - name: Upload pipeline logs on failure
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: nextflow-log-${{ matrix.profile }}
+          name: nextflow-log-test_noprimers
           path: |
             .nextflow.log
-            results_${{ matrix.profile }}/pipeline_info/
+            results/pipeline_info/
