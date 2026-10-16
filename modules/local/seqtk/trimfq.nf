@@ -9,7 +9,7 @@ process SEQTK_TRIMFQ {
 
     output:
     tuple val(meta), path("*.trim.fastq.gz")                                                       , emit: reads
-    tuple val("${task.process}"), val('seqtk'), eval('echo $(seqtk --version 2>&1)'), emit: versions, topic: versions
+    tuple val("${task.process}"), val('seqtk'), eval('seqtk 2>&1 | sed -nE \'s/^Version: ([^ ]+).*/\\1/p\''), emit: versions, topic: versions
 
     script:
     def args = task.ext.args ?: ''

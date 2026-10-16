@@ -10,7 +10,7 @@ process VSEARCH_DEREPFULLLENGTH {
 
     output:
     tuple val(meta), path("*.derep.fasta")                                                                                , emit: reads
-    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed \'s/vsearch //; s/,.*//\''), emit: versions, topic: versions
+    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\''), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

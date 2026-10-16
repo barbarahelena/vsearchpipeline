@@ -6,6 +6,7 @@
 
 include { paramsSummaryMap          } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc      } from '../subworkflows/nf-core/utils_nfcore_pipeline'
+include { workflowVersionToYAML     } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText    } from '../subworkflows/local/utils_vsearchpipeline_pipeline'
 
 //
@@ -293,18 +294,37 @@ workflow VSEARCHPIPELINE {
     GET_GIT_COMMIT ( commit_hash )
 
     //
-    // Collect software versions as TSV (always runs, independent of MultiQC)
+    // Collect software versions from the 'versions' topic channel.
+    // Each entry is [ process, tool, version ]: the version is a string (eval) or a file (R templates).
     //
-    channel.topic('versions')
+    def ch_versions = channel.topic('versions')
         .map { process, tool, version ->
             def v = (version instanceof Path) ? version.text.trim() : version.toString().trim()
-            "${process}\t${tool}\t${v}"
+            [ process.tokenize(':')[-1], tool, v ]
         }
         .unique()
+
+    // Plain table (always written, independent of MultiQC)
+    ch_versions
+        .map { process, tool, version -> "${process}\t${tool}\t${version}" }
         .collectFile(
             name: 'software_versions.tsv',
             storeDir: "${params.outdir}/pipeline_info",
-            seed: "process\tsoftware\tversion\n",
+            seed: "process\tsoftware\tversion",
+            sort: true,
+            newLine: true
+        )
+
+    // YAML grouped per process, as MultiQC's software versions section expects.
+    // Map to strings *before* collectFile: given tuples, collectFile uses the first element as a file name.
+    def ch_versions_yaml = ch_versions
+        .map { process, tool, version -> [ process, "    ${tool}: ${version}" ] }
+        .groupTuple()
+        .map { process, lines -> "${process}:\n${lines.sort().join('\n')}" }
+        .mix(channel.of(workflowVersionToYAML()))
+        .collectFile(
+            name: 'vsearchpipeline_software_mqc_versions.yml',
+            storeDir: "${params.outdir}/pipeline_info",
             sort: true,
             newLine: true
         )
@@ -333,7 +353,7 @@ workflow VSEARCHPIPELINE {
     ch_multiqc_files = channel.empty()
     ch_multiqc_files = ch_multiqc_files.mix(ch_workflow_summary)
     ch_multiqc_files = ch_multiqc_files.mix(ch_methods_description)
-    ch_multiqc_files = ch_multiqc_files.mix(channel.topic('versions').collectFile(name: 'collated_versions.yml'))
+    ch_multiqc_files = ch_multiqc_files.mix(ch_versions_yaml)
     ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.map { _meta, zips -> zips }.flatten())
 
     n_samples.filter { n -> n <= 6000 }

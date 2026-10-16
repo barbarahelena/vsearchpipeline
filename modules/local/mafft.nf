@@ -7,7 +7,7 @@ process MAFFT {
 
     output:
     path "asvs.msa"                                                                                    , emit: msa
-    tuple val("${task.process}"), val('mafft'), eval("mafft --version 2>&1 | sed 's/^v//; s/ (.*//'" ), emit: versions, topic: versions
+    tuple val("${task.process}"), val('mafft'), eval('mafft --version 2>&1 | sed -nE \'s/^v([0-9.]+).*/\\1/p\''), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

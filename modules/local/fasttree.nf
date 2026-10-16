@@ -8,7 +8,7 @@ process FASTTREE {
 
     output:
     path "asvs.msa.tree"                                                                                                                            , emit: tree
-    tuple val("${task.process}"), val('fasttree'), eval("fasttree -help 2>&1 | head -n 1 | sed -n 's/.*\\([0-9]\\+\\.[0-9]\\+\\.[0-9]\\+\\).*/\\1/p'"), emit: versions, topic: versions
+    tuple val("${task.process}"), val('fasttree'), eval('fasttree -help 2>&1 | sed -nE \'1s/^FastTree ([0-9.]+).*/\\1/p\''), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when

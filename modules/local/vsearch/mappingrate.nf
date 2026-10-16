@@ -1,5 +1,6 @@
 process VSEARCH_MAPPINGRATE {
     label 'process_single_low'
+    label 'python'
 
     input:
     path(count_table)
@@ -9,6 +10,8 @@ process VSEARCH_MAPPINGRATE {
     output:
     path "mapping_rate_summary.tsv"  , emit: summary
     path "mapping_rate_overall.txt"  , emit: overall
+    // eval() only works for Bash scripts, so the Python script writes its own version file
+    tuple val("${task.process}"), val('python'), path("version_python.txt"), emit: versions, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -83,11 +86,16 @@ process VSEARCH_MAPPINGRATE {
             fh.write(f"{sample}\\t{total}\\t{mapped}\\t{rate:.2f}\\n")
 
     print(f"Mapping rate summary written for {len(all_samples)} samples.")
+
+    import platform
+    with open("version_python.txt", "w") as fh:
+        fh.write(platform.python_version())
     """
 
     stub:
     """
     touch mapping_rate_summary.tsv
     touch mapping_rate_overall.txt
+    touch version_python.txt
     """
 }
