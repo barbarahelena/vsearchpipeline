@@ -61,17 +61,20 @@ workflow VSEARCHPIPELINE {
     FASTQC (
         ch_reads
     )
+
     //
-    // MODULE:  Seqtk trim primers in fastq files
+    // MODULE: Seqtk trim primers in fastq files
     //
+    def ch_trimmed_reads = ch_reads
+    def ch_out_seqtk     = channel.empty()
     if (!params.skip_primers) {
         SEQTK_TRIMFQ (
-            ch_reads, 
+            ch_reads,
             ch_primers
-        ).reads.set {ch_trimmed_reads}
-    } else {
-        ch_trimmed_reads = ch_reads
-    }    
+        )
+        ch_trimmed_reads = SEQTK_TRIMFQ.out.reads
+        ch_out_seqtk     = SEQTK_TRIMFQ.out.reads
+    }
 
     //
     // MODULE: VSEARCH merge fastq pairs
@@ -93,8 +96,9 @@ workflow VSEARCHPIPELINE {
         params.filter_maxee,
         params.filter_minlen,
         params.filter_maxlen,
-        params.filter_maxns 
+        params.filter_maxns
     )
+
     //
     // MODULE: VSEARCH dereplicate per sample
     //
@@ -102,21 +106,19 @@ workflow VSEARCHPIPELINE {
         VSEARCH_FASTQFILTER.out.reads,
         params.derep_strand
     )
-    //
-    // Combine all reads
-    //
-    fastq_files = VSEARCH_DEREPFULLLENGTH.out.reads
-        .collect { f -> f[1] }
 
-    // 
+    //
     // MODULE: VSEARCH dereplicate for all reads
     //
     VSEARCH_DEREPFULLLENGTHALL (
-        fastq_files,
+        // Sort by file name so the input order (and so the ASV numbering) does not depend on which task
+        // finished first. Not sort: true, which compares full paths including the random work dir names.
+        VSEARCH_DEREPFULLLENGTH.out.reads.map { _meta, fasta -> fasta }.collect(sort: { a, b -> a.name <=> b.name }),
         params.derep_all_strand,
         params.derep_all_fastawidth,
         params.derep_all_minunique
     )
+
     //
     // MODULE: VSEARCH cluster asvs
     //
@@ -125,7 +127,8 @@ workflow VSEARCHPIPELINE {
         params.cluster_minsize,
         params.cluster_alpha
     )
-    // 
+
+    //
     // MODULE: VSEARCH sort and remove singletons
     //
     VSEARCH_SORT_REMOVE_SINGLETONS (
@@ -133,6 +136,7 @@ workflow VSEARCHPIPELINE {
         params.sort_fastawidth,
         params.sort_minsize
     )
+
     //
     // MODULE: VSEARCH chimera detection
     //
@@ -140,6 +144,7 @@ workflow VSEARCHPIPELINE {
         VSEARCH_SORT_REMOVE_SINGLETONS.out.asvs,
         params.uchime_label
     )
+
     //
     // MODULE: VSEARCH make count table
     //
@@ -157,28 +162,49 @@ workflow VSEARCHPIPELINE {
         VSEARCH_USEARCHGLOBAL.out.mapping_stats,
         VSEARCH_FASTQFILTER.out.filter_stats.map { _meta, f -> f }.collect()
     )
-    
-    if(params.skip_tree != true){
-        // MODULE: MAFFT for multiple sequence alignment
-        //
+
+    def ch_out_vsearch = channel.empty()
+        .mix(
+            VSEARCH_FASTQMERGEPAIRS.out.reads,
+            VSEARCH_FASTQFILTER.out.reads,
+            VSEARCH_FASTQFILTER.out.filter_stats,
+            VSEARCH_DEREPFULLLENGTH.out.reads,
+            VSEARCH_DEREPFULLLENGTHALL.out.reads,
+            VSEARCH_DEREPFULLLENGTHALL.out.concatreads,
+            VSEARCH_CLUSTERUNOISE.out.asvs,
+            VSEARCH_SORT_REMOVE_SINGLETONS.out.asvs,
+            VSEARCH_UCHIMEDENOVO.out.asvs,
+            VSEARCH_UCHIMEDENOVO.out.chimeras,
+            VSEARCH_USEARCHGLOBAL.out.counts,
+            VSEARCH_USEARCHGLOBAL.out.mapping_stats,
+            VSEARCH_MAPPINGRATE.out.summary,
+            VSEARCH_MAPPINGRATE.out.overall
+        )
+
+    //
+    // MODULE: MAFFT multiple sequence alignment + FastTree
+    //
+    def ch_tree          = channel.fromPath("${projectDir}/assets/NO_TREEFILE")
+    def ch_out_mafft     = channel.empty()
+    def ch_out_fasttree  = channel.empty()
+    if (!params.skip_tree) {
         MAFFT (
             VSEARCH_UCHIMEDENOVO.out.asvs
         )
-
-        //
-        // MODULE: Build tree with FastTree
-        //
-            FASTTREE (
-                MAFFT.out.msa
-            )
-            ch_tree = FASTTREE.out.tree
-    } else {
-        ch_tree = channel.fromPath("$projectDir/assets/NO_TREEFILE")
+        FASTTREE (
+            MAFFT.out.msa
+        )
+        ch_tree         = FASTTREE.out.tree
+        ch_out_mafft    = MAFFT.out.msa
+        ch_out_fasttree = FASTTREE.out.tree
     }
-    
-    // 
-    // MODULE: Download SILVA if not already present in db folder, or use supplied paths
+
     //
+    // MODULE: Download SILVA if not supplied
+    //
+    def ch_silva_asv_db     = channel.empty()
+    def ch_silva_species_db = channel.empty()
+    def ch_out_silva        = channel.empty()
     if (params.silva_asv_db && params.silva_species_db) {
         ch_silva_asv_db     = channel.fromPath(params.silva_asv_db, checkIfExists: true)
         ch_silva_species_db = channel.fromPath(params.silva_species_db, checkIfExists: true)
@@ -186,9 +212,12 @@ workflow VSEARCHPIPELINE {
         SILVADATABASES()
         ch_silva_asv_db     = SILVADATABASES.out.asvdb
         ch_silva_species_db = SILVADATABASES.out.speciesdb
+        if (params.save_silva_db) {
+            ch_out_silva = SILVADATABASES.out.asvdb.mix(SILVADATABASES.out.speciesdb)
+        }
     }
-    
-    // 
+
+    //
     // MODULE: DADA2 Assign taxonomy with SILVA db
     //
     DADA2_ASSIGNTAXONOMY (
@@ -203,12 +232,15 @@ workflow VSEARCHPIPELINE {
     //
     // MODULE: PICRUST
     //
-    if(params.skip_picrust != true){
-        PICRUST2 ( 
+    def ch_out_picrust2 = channel.empty()
+    if (!params.skip_picrust) {
+        PICRUST2 (
             VSEARCH_UCHIMEDENOVO.out.asvs,
             VSEARCH_USEARCHGLOBAL.out.counts
         )
+        ch_out_picrust2 = PICRUST2.out.outfolder
     }
+
     //
     // MODULE: Make phyloseq object
     //
@@ -219,13 +251,15 @@ workflow VSEARCHPIPELINE {
         DADA2_ASSIGNTAXONOMY.out.taxtable
     )
 
-    ch_phyloseq = PHYLOSEQ_COMPLETE_MAKEOBJECT.out.phyloseq
-    ch_taxtable = PHYLOSEQ_COMPLETE_MAKEOBJECT.out.taxtable
-    ch_complete = true
+    def ch_phyloseq = PHYLOSEQ_COMPLETE_MAKEOBJECT.out.phyloseq
+    def ch_out_phyloseq_complete = PHYLOSEQ_COMPLETE_MAKEOBJECT.out.phyloseq
+        .mix(PHYLOSEQ_COMPLETE_MAKEOBJECT.out.taxtable)
 
     //
     // MODULE: Decontam (optional) — run before rarefaction
     //
+    def ch_phyloseq_for_rarefaction = ch_phyloseq
+    def ch_out_phyloseq_decontam    = channel.empty()
     if (params.run_decontam) {
         PHYLOSEQ_DECONTAM (
             ch_phyloseq,
@@ -233,60 +267,88 @@ workflow VSEARCHPIPELINE {
         )
         // Use decontam output as basis for rarefaction and downstream steps
         ch_phyloseq_for_rarefaction = PHYLOSEQ_DECONTAM.out.phyloseq
-    } else {
-        ch_phyloseq_for_rarefaction = ch_phyloseq
+        ch_out_phyloseq_decontam    = PHYLOSEQ_DECONTAM.out.phyloseq
+            .mix(
+                PHYLOSEQ_DECONTAM.out.report,
+                PHYLOSEQ_DECONTAM.out.contaminants,
+                PHYLOSEQ_DECONTAM.out.prev_plot
+            )
     }
 
     //
-    // MODULE: Fix taxonomy
+    // MODULE: Fix taxonomy + overview metrics (complete dataset)
     //
     if (!params.skip_fixtaxonomy) {
         PHYLOSEQ_COMPLETE_FIXTAX (
             ch_phyloseq,
-            ch_complete
+            true
         )
-        ch_taxtable = PHYLOSEQ_COMPLETE_FIXTAX.out.taxonomy
-        // //
-        // // MODULE: Overview metrics
-        // //
+        ch_out_phyloseq_complete = ch_out_phyloseq_complete.mix(
+            PHYLOSEQ_COMPLETE_FIXTAX.out.taxonomy,
+            PHYLOSEQ_COMPLETE_FIXTAX.out.phylevels,
+            PHYLOSEQ_COMPLETE_FIXTAX.out.phylevelstop
+        )
+
         if (!params.skip_metrics) {
             PHYLOSEQ_COMPLETE_METRICS (
                 ch_phyloseq,
-                ch_taxtable,
-                ch_complete
+                PHYLOSEQ_COMPLETE_FIXTAX.out.taxonomy,
+                true
+            )
+            ch_out_phyloseq_complete = ch_out_phyloseq_complete.mix(
+                PHYLOSEQ_COMPLETE_METRICS.out.speciescomp,
+                PHYLOSEQ_COMPLETE_METRICS.out.genuscomp,
+                PHYLOSEQ_COMPLETE_METRICS.out.famcomp,
+                PHYLOSEQ_COMPLETE_METRICS.out.phylumcomp,
+                PHYLOSEQ_COMPLETE_METRICS.out.shannon,
+                PHYLOSEQ_COMPLETE_METRICS.out.richness,
+                PHYLOSEQ_COMPLETE_METRICS.out.metrics
             )
         }
     }
 
+    //
+    // MODULE: Rarefaction — uses decontam output if run_decontam, else complete phyloseq
+    //
+    def ch_out_phyloseq_rarefied = channel.empty()
     if (!params.skip_rarefaction) {
-        ch_complete_new = false
-        //
-        // MODULE: Rarefaction — uses decontam output if run_decontam, else complete phyloseq
-        //
         PHYLOSEQ_RAREFIED (
             ch_phyloseq_for_rarefaction,
-            params.rarelevel,
+            params.rarelevel
         )
-        
-        ch_rarefied_phyloseq = PHYLOSEQ_RAREFIED.out.phyloseq
+        ch_out_phyloseq_rarefied = PHYLOSEQ_RAREFIED.out.phyloseq
+            .mix(PHYLOSEQ_RAREFIED.out.rarecurve, PHYLOSEQ_RAREFIED.out.rarereport)
 
         if (!params.skip_fixtaxonomy) {
             PHYLOSEQ_RAREFIED_FIXTAX (
-                ch_rarefied_phyloseq,
-                ch_complete_new
+                PHYLOSEQ_RAREFIED.out.phyloseq,
+                false
             )
-    
-        ch_rarefied_taxtable = PHYLOSEQ_RAREFIED_FIXTAX.out.taxonomy
+            ch_out_phyloseq_rarefied = ch_out_phyloseq_rarefied.mix(
+                PHYLOSEQ_RAREFIED_FIXTAX.out.taxonomy,
+                PHYLOSEQ_RAREFIED_FIXTAX.out.phylevels,
+                PHYLOSEQ_RAREFIED_FIXTAX.out.phylevelstop
+            )
+
             if (!params.skip_metrics) {
                 PHYLOSEQ_RAREFIED_METRICS (
-                    ch_rarefied_phyloseq,
-                    ch_rarefied_taxtable,
-                    ch_complete_new
+                    PHYLOSEQ_RAREFIED.out.phyloseq,
+                    PHYLOSEQ_RAREFIED_FIXTAX.out.taxonomy,
+                    false
+                )
+                ch_out_phyloseq_rarefied = ch_out_phyloseq_rarefied.mix(
+                    PHYLOSEQ_RAREFIED_METRICS.out.speciescomp,
+                    PHYLOSEQ_RAREFIED_METRICS.out.genuscomp,
+                    PHYLOSEQ_RAREFIED_METRICS.out.famcomp,
+                    PHYLOSEQ_RAREFIED_METRICS.out.phylumcomp,
+                    PHYLOSEQ_RAREFIED_METRICS.out.shannon,
+                    PHYLOSEQ_RAREFIED_METRICS.out.richness,
+                    PHYLOSEQ_RAREFIED_METRICS.out.metrics
                 )
             }
         }
     }
-    
+
     //
     // MODULE: Record pipeline git commit hash
     //
@@ -350,19 +412,36 @@ workflow VSEARCHPIPELINE {
         }
     }
 
-    ch_multiqc_files = channel.empty()
-    ch_multiqc_files = ch_multiqc_files.mix(ch_workflow_summary)
-    ch_multiqc_files = ch_multiqc_files.mix(ch_methods_description)
-    ch_multiqc_files = ch_multiqc_files.mix(ch_versions_yaml)
-    ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.map { _meta, zips -> zips }.flatten())
+    def ch_multiqc_files = channel.empty()
+        .mix(
+            ch_workflow_summary,
+            ch_methods_description,
+            ch_versions_yaml,
+            FASTQC.out.zip.map { _meta, zips -> zips }.flatten()
+        )
 
-    n_samples.filter { n -> n <= 6000 }
+    def ch_multiqc_input = n_samples.filter { n -> n <= 6000 }
         .map { n -> [ n ] }
         .combine(ch_multiqc_files.collect().map { files -> [ files ] })
         .map { _n, files -> [ [id: 'multiqc'], files, [], [], [], [] ] }
-        .set { ch_multiqc_input }
 
     MULTIQC ( ch_multiqc_input )
+
+    emit:
+    // One channel per results folder; the output block in main.nf decides where each goes
+    fastqc            = FASTQC.out.html.mix(FASTQC.out.zip)
+    seqtk             = ch_out_seqtk
+    vsearch           = ch_out_vsearch
+    mafft             = ch_out_mafft
+    fasttree          = ch_out_fasttree
+    silva_db          = ch_out_silva
+    dada2             = DADA2_ASSIGNTAXONOMY.out.taxtable
+    picrust2          = ch_out_picrust2
+    phyloseq_complete = ch_out_phyloseq_complete
+    phyloseq_decontam = ch_out_phyloseq_decontam
+    phyloseq_rarefied = ch_out_phyloseq_rarefied
+    multiqc           = MULTIQC.out.report.mix(MULTIQC.out.data, MULTIQC.out.plots)
+    pipeline_info     = GET_GIT_COMMIT.out.commit_hash
 }
 
 /*

@@ -19,32 +19,6 @@ include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_vsearchpipe
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    NAMED WORKFLOWS FOR PIPELINE
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
-
-//
-// WORKFLOW: Run main analysis pipeline depending on type of input
-//
-workflow VSEARCHFLOW {
-
-    take:
-    reads   // channel: reads read in from --input
-    primers // channel: primers read in from --primers
-
-    main:
-
-    //
-    // WORKFLOW: Run pipeline
-    //
-    VSEARCHPIPELINE (
-        reads,
-        primers
-    )
-}
-
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
@@ -71,7 +45,7 @@ workflow {
     //
     // WORKFLOW: Run main workflow
     //
-    VSEARCHFLOW (
+    VSEARCHPIPELINE (
         PIPELINE_INITIALISATION.out.reads,
         PIPELINE_INITIALISATION.out.primers
     )
@@ -86,6 +60,43 @@ workflow {
         params.outdir,
         params.monochrome_logs
     )
+
+    publish:
+    fastqc            = VSEARCHPIPELINE.out.fastqc
+    seqtk             = VSEARCHPIPELINE.out.seqtk
+    vsearch           = VSEARCHPIPELINE.out.vsearch
+    mafft             = VSEARCHPIPELINE.out.mafft
+    fasttree          = VSEARCHPIPELINE.out.fasttree
+    silva_db          = VSEARCHPIPELINE.out.silva_db
+    dada2             = VSEARCHPIPELINE.out.dada2
+    picrust2          = VSEARCHPIPELINE.out.picrust2
+    phyloseq_complete = VSEARCHPIPELINE.out.phyloseq_complete
+    phyloseq_decontam = VSEARCHPIPELINE.out.phyloseq_decontam
+    phyloseq_rarefied = VSEARCHPIPELINE.out.phyloseq_rarefied
+    multiqc           = VSEARCHPIPELINE.out.multiqc
+    pipeline_info     = VSEARCHPIPELINE.out.pipeline_info
+}
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    WORKFLOW OUTPUTS: where each published channel goes, relative to --outdir
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+output {
+    fastqc            { path 'fastqc' }
+    seqtk             { path 'seqtk' }
+    vsearch           { path 'vsearch' }
+    mafft             { path 'mafft' }
+    fasttree          { path 'fasttree' }
+    silva_db          { path 'silva_db' }
+    dada2             { path 'dada2' }
+    picrust2          { path 'picrust2' }
+    phyloseq_complete { path 'phyloseq/complete' }
+    phyloseq_decontam { path 'phyloseq/decontam' }
+    phyloseq_rarefied { path 'phyloseq/rarefied' }
+    multiqc           { path 'multiqc' }
+    pipeline_info     { path 'pipeline_info' }
 }
 
 /*
