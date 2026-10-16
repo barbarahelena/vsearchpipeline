@@ -119,7 +119,8 @@
                     "type": "boolean",
                     "description": "Display version and exit.",
                     "fa_icon": "fas fa-question-circle",
-                    "hidden": true
+                    "hidden": true,
+                    "default": false
                 },
                 "publish_dir_mode": {
                     "type": "string",
@@ -149,7 +150,8 @@
                     "type": "boolean",
                     "description": "Send plain-text email instead of HTML.",
                     "fa_icon": "fas fa-remove-format",
-                    "hidden": true
+                    "hidden": true,
+                    "default": false
                 },
                 "max_multiqc_email_size": {
                     "type": "string",
@@ -163,7 +165,8 @@
                     "type": "boolean",
                     "description": "Do not use coloured log outputs.",
                     "fa_icon": "fas fa-palette",
-                    "hidden": true
+                    "hidden": true,
+                    "default": false
                 },
                 "trace_report_suffix": {
                     "type": "string",
@@ -200,13 +203,15 @@
                     "type": "boolean",
                     "description": "Display the full detailed help message.",
                     "fa_icon": "fas fa-question-circle",
-                    "hidden": true
+                    "hidden": true,
+                    "default": false
                 },
                 "show_hidden": {
                     "type": "boolean",
                     "description": "Display hidden parameters in the help message (only works when --help or --help_full are provided).",
                     "fa_icon": "fas fa-eye-slash",
-                    "hidden": true
+                    "hidden": true,
+                    "default": false
                 }
             }
         },
@@ -220,7 +225,8 @@
                     "type": "boolean",
                     "description": "Fastq merge process: : allow merging of staggered read pairs.",
                     "help_text": "When using --fastq_mergepairs, allow merging of staggered read pairs. Staggered pairs\nare pairs where the 3’ end of the reverse read has an overhang to the left of the 5’ end\nof the forward read. This situation can occur when a very short fragment is sequenced.\nThe 3’ overhang of the reverse read is not included in the merged sequence. The oppo-\nsite option is the --fastq_nostagger option. The default is to discard staggered pairs.",
-                    "fa_icon": "fas fa-hashtag"
+                    "fa_icon": "fas fa-hashtag",
+                    "default": false
                 },
                 "merge_maxdiffs": {
                     "type": "integer",
@@ -305,7 +311,7 @@
                 },
                 "cluster_minsize": {
                     "type": "integer",
-                    "default": 8,
+                    "default": 10,
                     "description": "Clustering",
                     "fa_icon": "fas fa-compress-alt"
                 },
@@ -416,32 +422,38 @@
                 "skip_primers": {
                     "type": "boolean",
                     "description": "Skip trimming of primers",
-                    "fa_icon": "fas fa-forward"
+                    "fa_icon": "fas fa-forward",
+                    "default": true
                 },
                 "skip_tree": {
                     "type": "boolean",
                     "description": "Skip multiple sequence alignment and tree processes",
-                    "fa_icon": "fas fa-forward"
+                    "fa_icon": "fas fa-forward",
+                    "default": false
                 },
                 "skip_picrust": {
                     "type": "boolean",
                     "description": "Skip picrust process",
-                    "fa_icon": "fas fa-forward"
+                    "fa_icon": "fas fa-forward",
+                    "default": true
                 },
                 "skip_rarefaction": {
                     "type": "boolean",
                     "description": "Skip rarefaction of phyloseq object",
-                    "fa_icon": "fas fa-forward"
+                    "fa_icon": "fas fa-forward",
+                    "default": false
                 },
                 "skip_fixtaxonomy": {
                     "type": "boolean",
                     "description": "Skip process to make a table with composite taxonomy names",
-                    "fa_icon": "fas fa-forward"
+                    "fa_icon": "fas fa-forward",
+                    "default": false
                 },
                 "skip_metrics": {
                     "type": "boolean",
                     "description": "Skip process to provide some general metrics of the phyloseq object (composition, diversity)",
-                    "fa_icon": "fas fa-forward"
+                    "fa_icon": "fas fa-forward",
+                    "default": false
                 }
             },
             "fa_icon": "fas fa-forward"
