@@ -107,7 +107,7 @@ workflow PIPELINE_INITIALISATION {
             .map { csv -> parsePrimersheet(csv) }
             .first()
     } else {
-        ch_primers = channel.empty()
+        ch_primers = channel.value([:])   // a value (not an empty channel), never used when primers are skipped
     }
 
     emit:

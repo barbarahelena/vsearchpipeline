@@ -8,7 +8,7 @@ process VSEARCH_FASTQFILTER {
 
     input:
     tuple(meta: Map, reads: Path)
-    maxee: Number       // expected errors can be fractional, e.g. 0.5
+    maxee: Float        // expected errors can be fractional, e.g. 0.5
     minlength: Integer  // 0 = no minimum
     maxlength: Integer  // 0 = no maximum
     maxns: Integer      // 0 = vsearch default

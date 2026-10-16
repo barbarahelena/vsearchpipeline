@@ -8,7 +8,7 @@ process VSEARCH_USEARCHGLOBAL {
     input:
     allreads: Path   // all reads concatenated
     asvs: Path
-    id: Number       // minimum identity, e.g. 0.97
+    id: Float        // minimum identity, e.g. 0.97
 
     output:
     counts        = file("count_table.txt")

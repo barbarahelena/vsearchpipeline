@@ -1,4 +1,6 @@
 #!/usr/bin/env nextflow
+
+nextflow.enable.types = true
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     vsearchpipeline
@@ -83,7 +85,15 @@ params {
     skip_metrics: Boolean               = false
     skip_picrust: Boolean               = true
 
+    // Output and notifications (outdir and monochrome_logs are also set in nextflow.config, which config files read; config wins)
+    outdir: String?                     = null
+    email: String?                      = null
+    email_on_fail: String?              = null
+    monochrome_logs: Boolean            = false
+    multiqc_methods_description: String? = null
+
     // Generic
+    help: String?                       = null   // --help, or --help <parameter> for one parameter
     help_full: Boolean                  = false
     show_hidden: Boolean                = false
     version: Boolean                    = false
@@ -104,7 +114,7 @@ workflow {
     //
     // SUBWORKFLOW: Run initialisation tasks
     //
-    PIPELINE_INITIALISATION (
+    def init = PIPELINE_INITIALISATION (
         params.version,
         params.validate_params,
         args,
@@ -119,9 +129,50 @@ workflow {
     //
     // WORKFLOW: Run main workflow
     //
-    VSEARCHPIPELINE (
-        PIPELINE_INITIALISATION.out.reads,
-        PIPELINE_INITIALISATION.out.primers
+    // The options VSEARCHPIPELINE uses, as a typed record (see VsearchOptions in workflows/vsearchpipeline.nf)
+    def opts = record(
+        input                      : params.input,
+        outdir                     : params.outdir,
+        skip_primers               : params.skip_primers,
+        merge_allowmergestagger    : params.merge_allowmergestagger,
+        merge_maxdiffs             : params.merge_maxdiffs,
+        merge_minlen               : params.merge_minlen,
+        merge_maxlen               : params.merge_maxlen,
+        merge_maxdiffpct           : params.merge_maxdiffpct,
+        filter_maxee               : params.filter_maxee,
+        filter_minlen              : params.filter_minlen,
+        filter_maxlen              : params.filter_maxlen,
+        filter_maxns               : params.filter_maxns,
+        derep_strand               : params.derep_strand,
+        derep_all_strand           : params.derep_all_strand,
+        derep_all_fastawidth       : params.derep_all_fastawidth,
+        derep_all_minunique        : params.derep_all_minunique,
+        cluster_minsize            : params.cluster_minsize,
+        cluster_alpha              : params.cluster_alpha,
+        sort_fastawidth            : params.sort_fastawidth,
+        sort_minsize               : params.sort_minsize,
+        uchime_label               : params.uchime_label,
+        usearch_id                 : params.usearch_id,
+        skip_tree                  : params.skip_tree,
+        silva_asv_db               : params.silva_asv_db,
+        silva_species_db           : params.silva_species_db,
+        save_silva_db              : params.save_silva_db,
+        dada2_minboot              : params.dada2_minboot,
+        dada2_allowmultiple        : params.dada2_allowmultiple,
+        dada2_tryrevcompl          : params.dada2_tryrevcompl,
+        skip_picrust               : params.skip_picrust,
+        run_decontam               : params.run_decontam,
+        skip_fixtaxonomy           : params.skip_fixtaxonomy,
+        skip_metrics               : params.skip_metrics,
+        skip_rarefaction           : params.skip_rarefaction,
+        rarelevel                  : params.rarelevel,
+        multiqc_methods_description: params.multiqc_methods_description
+    )
+
+    def pipeline = VSEARCHPIPELINE (
+        init.reads,
+        init.primers,
+        opts
     )
 
     //
@@ -136,19 +187,19 @@ workflow {
     )
 
     publish:
-    fastqc            = VSEARCHPIPELINE.out.fastqc
-    seqtk             = VSEARCHPIPELINE.out.seqtk
-    vsearch           = VSEARCHPIPELINE.out.vsearch
-    mafft             = VSEARCHPIPELINE.out.mafft
-    fasttree          = VSEARCHPIPELINE.out.fasttree
-    silva_db          = VSEARCHPIPELINE.out.silva_db
-    dada2             = VSEARCHPIPELINE.out.dada2
-    picrust2          = VSEARCHPIPELINE.out.picrust2
-    phyloseq_complete = VSEARCHPIPELINE.out.phyloseq_complete
-    phyloseq_decontam = VSEARCHPIPELINE.out.phyloseq_decontam
-    phyloseq_rarefied = VSEARCHPIPELINE.out.phyloseq_rarefied
-    multiqc           = VSEARCHPIPELINE.out.multiqc
-    pipeline_info     = VSEARCHPIPELINE.out.pipeline_info
+    fastqc            = pipeline.fastqc
+    seqtk             = pipeline.seqtk
+    vsearch           = pipeline.vsearch
+    mafft             = pipeline.mafft
+    fasttree          = pipeline.fasttree
+    silva_db          = pipeline.silva_db
+    dada2             = pipeline.dada2
+    picrust2          = pipeline.picrust2
+    phyloseq_complete = pipeline.phyloseq_complete
+    phyloseq_decontam = pipeline.phyloseq_decontam
+    phyloseq_rarefied = pipeline.phyloseq_rarefied
+    multiqc           = pipeline.multiqc
+    pipeline_info     = pipeline.pipeline_info
 }
 
 /*
@@ -158,19 +209,19 @@ workflow {
 */
 
 output {
-    fastqc            { path 'fastqc' }
-    seqtk             { path 'seqtk' }
-    vsearch           { path 'vsearch' }
-    mafft             { path 'mafft' }
-    fasttree          { path 'fasttree' }
-    silva_db          { path 'silva_db' }
-    dada2             { path 'dada2' }
-    picrust2          { path 'picrust2' }
-    phyloseq_complete { path 'phyloseq/complete' }
-    phyloseq_decontam { path 'phyloseq/decontam' }
-    phyloseq_rarefied { path 'phyloseq/rarefied' }
-    multiqc           { path 'multiqc' }
-    pipeline_info     { path 'pipeline_info' }
+    fastqc: Channel<Path>            { path 'fastqc' }
+    seqtk: Channel<Path>             { path 'seqtk' }
+    vsearch: Channel<Path>           { path 'vsearch' }
+    mafft: Channel<Path>             { path 'mafft' }
+    fasttree: Channel<Path>          { path 'fasttree' }
+    silva_db: Channel<Path>          { path 'silva_db' }
+    dada2: Channel<Path>             { path 'dada2' }
+    picrust2: Channel<Path>          { path 'picrust2' }
+    phyloseq_complete: Channel<Path> { path 'phyloseq/complete' }
+    phyloseq_decontam: Channel<Path> { path 'phyloseq/decontam' }
+    phyloseq_rarefied: Channel<Path> { path 'phyloseq/rarefied' }
+    multiqc: Channel<Path>           { path 'multiqc' }
+    pipeline_info: Channel<Path>     { path 'pipeline_info' }
 }
 
 /*

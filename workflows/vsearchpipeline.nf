@@ -1,3 +1,5 @@
+nextflow.enable.types = true
+
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
@@ -44,6 +46,53 @@ include { MULTIQC         } from '../modules/nf-core/multiqc/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    OPTIONS
+    The parameters this workflow uses. main.nf passes `params`; only these fields are
+    read, and each must have the declared type.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+record VsearchOptions {
+    input: Path?
+    outdir: String
+    skip_primers: Boolean
+    merge_allowmergestagger: Boolean
+    merge_maxdiffs: Integer
+    merge_minlen: Integer
+    merge_maxlen: Integer
+    merge_maxdiffpct: Integer
+    filter_maxee: Float
+    filter_minlen: Integer
+    filter_maxlen: Integer
+    filter_maxns: Integer
+    derep_strand: String
+    derep_all_strand: String
+    derep_all_fastawidth: Integer
+    derep_all_minunique: Integer
+    cluster_minsize: Integer
+    cluster_alpha: Float
+    sort_fastawidth: Integer
+    sort_minsize: Integer
+    uchime_label: String
+    usearch_id: Float
+    skip_tree: Boolean
+    silva_asv_db: Path?
+    silva_species_db: Path?
+    save_silva_db: Boolean
+    dada2_minboot: Integer
+    dada2_allowmultiple: Integer
+    dada2_tryrevcompl: Boolean
+    skip_picrust: Boolean
+    run_decontam: Boolean
+    skip_fixtaxonomy: Boolean
+    skip_metrics: Boolean
+    skip_rarefaction: Boolean
+    rarelevel: Integer
+    multiqc_methods_description: String?
+}
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
@@ -51,259 +100,199 @@ include { MULTIQC         } from '../modules/nf-core/multiqc/main'
 workflow VSEARCHPIPELINE {
 
     take:
-    ch_reads   // channel: [ val(meta), [ reads ] ]
-    ch_primers // channel: val(map with forward/reverse keys), or empty
+    ch_reads: Channel<Tuple>   // [ meta, [ fastq_1, fastq_2 ] ]
+    ch_primers: Value<Map>     // [ forward: ..., reverse: ... ]; [:] when --skip_primers
+    opts: VsearchOptions
 
     main:
     //
     // MODULE: Run FastQC
     //
-    FASTQC (
-        ch_reads
-    )
+    def fastqc_results = FASTQC(ch_reads)   // not 'fastqc': that is an emit name below
 
     //
     // MODULE: Seqtk trim primers in fastq files
     //
     def ch_trimmed_reads = ch_reads
     def ch_out_seqtk     = channel.empty()
-    if (!params.skip_primers) {
-        SEQTK_TRIMFQ (
-            ch_reads,
-            ch_primers
-        )
-        ch_trimmed_reads = SEQTK_TRIMFQ.out.reads
-        ch_out_seqtk     = SEQTK_TRIMFQ.out.reads
+    if (!opts.skip_primers) {
+        def trimmed = SEQTK_TRIMFQ(ch_reads, ch_primers)
+        ch_trimmed_reads = trimmed
+        ch_out_seqtk     = trimmed.flatMap { _meta, fastqs -> fastqs }
     }
 
     //
-    // MODULE: VSEARCH merge fastq pairs
+    // MODULE: VSEARCH merge read pairs, quality filter, dereplicate per sample
     //
-    VSEARCH_FASTQMERGEPAIRS (
+    def merged = VSEARCH_FASTQMERGEPAIRS(
         ch_trimmed_reads,
-        params.merge_allowmergestagger,
-        params.merge_maxdiffs,
-        params.merge_minlen,
-        params.merge_maxlen,
-        params.merge_maxdiffpct
+        opts.merge_allowmergestagger,
+        opts.merge_maxdiffs,
+        opts.merge_minlen,
+        opts.merge_maxlen,
+        opts.merge_maxdiffpct
+    )
+    def filtered = VSEARCH_FASTQFILTER(
+        merged,
+        opts.filter_maxee,
+        opts.filter_minlen,
+        opts.filter_maxlen,
+        opts.filter_maxns
+    )
+    def derep = VSEARCH_DEREPFULLLENGTH(
+        filtered.reads,
+        opts.derep_strand
     )
 
     //
-    // MODULE: VSEARCH filter fastq files
+    // MODULE: VSEARCH dereplicate all samples together
     //
-    VSEARCH_FASTQFILTER (
-        VSEARCH_FASTQMERGEPAIRS.out.reads,
-        params.filter_maxee,
-        params.filter_minlen,
-        params.filter_maxlen,
-        params.filter_maxns
+    // Sort by file name so the input order (and so the ASV numbering) does not depend on which
+    // task finished first. collect() returns an unordered Bag; toSorted gives an ordered List.
+    def ch_derep_sorted = derep
+        .map { _meta, fasta -> fasta }
+        .collect()
+        .map { fastas -> fastas.toSorted { a, b -> a.name <=> b.name } }
+    def derep_all = VSEARCH_DEREPFULLLENGTHALL(
+        ch_derep_sorted,
+        opts.derep_all_strand,
+        opts.derep_all_fastawidth,
+        opts.derep_all_minunique
     )
 
     //
-    // MODULE: VSEARCH dereplicate per sample
+    // MODULE: VSEARCH denoise (UNOISE), remove singletons and chimeras, count table, mapping rate
     //
-    VSEARCH_DEREPFULLLENGTH (
-        VSEARCH_FASTQFILTER.out.reads,
-        params.derep_strand
+    def clustered = VSEARCH_CLUSTERUNOISE(
+        derep_all.reads,
+        opts.cluster_minsize,
+        opts.cluster_alpha
+    )
+    def nonsingle = VSEARCH_SORT_REMOVE_SINGLETONS(
+        clustered,
+        opts.sort_fastawidth,
+        opts.sort_minsize
+    )
+    def nonchimeric = VSEARCH_UCHIMEDENOVO(
+        nonsingle,
+        opts.uchime_label
+    )
+    def ch_asvs = nonchimeric.asvs
+    def counts = VSEARCH_USEARCHGLOBAL(
+        derep_all.concatreads,
+        ch_asvs,
+        opts.usearch_id
+    )
+    def mappingrate = VSEARCH_MAPPINGRATE(
+        counts.counts,
+        counts.mapping_stats,
+        filtered.filter_stats.map { _meta, f -> f }.collect().map { files -> files.toList() }
     )
 
-    //
-    // MODULE: VSEARCH dereplicate for all reads
-    //
-    VSEARCH_DEREPFULLLENGTHALL (
-        // Sort by file name so the input order (and so the ASV numbering) does not depend on which task
-        // finished first. Not sort: true, which compares full paths including the random work dir names.
-        VSEARCH_DEREPFULLLENGTH.out.reads.map { _meta, fasta -> fasta }.collect(sort: { a, b -> a.name <=> b.name }),
-        params.derep_all_strand,
-        params.derep_all_fastawidth,
-        params.derep_all_minunique
-    )
-
-    //
-    // MODULE: VSEARCH cluster asvs
-    //
-    VSEARCH_CLUSTERUNOISE (
-        VSEARCH_DEREPFULLLENGTHALL.out.reads,
-        params.cluster_minsize,
-        params.cluster_alpha
-    )
-
-    //
-    // MODULE: VSEARCH sort and remove singletons
-    //
-    VSEARCH_SORT_REMOVE_SINGLETONS (
-        VSEARCH_CLUSTERUNOISE.out.asvs,
-        params.sort_fastawidth,
-        params.sort_minsize
-    )
-
-    //
-    // MODULE: VSEARCH chimera detection
-    //
-    VSEARCH_UCHIMEDENOVO (
-        VSEARCH_SORT_REMOVE_SINGLETONS.out.asvs,
-        params.uchime_label
-    )
-
-    //
-    // MODULE: VSEARCH make count table
-    //
-    VSEARCH_USEARCHGLOBAL (
-        VSEARCH_DEREPFULLLENGTHALL.out.concatreads,
-        VSEARCH_UCHIMEDENOVO.out.asvs,
-        params.usearch_id
-    )
-
-    //
-    // MODULE: Calculate per-sample mapping rates from usearch_global outputs
-    //
-    VSEARCH_MAPPINGRATE (
-        VSEARCH_USEARCHGLOBAL.out.counts,
-        VSEARCH_USEARCHGLOBAL.out.mapping_stats,
-        VSEARCH_FASTQFILTER.out.filter_stats.map { _meta, f -> f }.collect()
-    )
-
+    // mix() takes one channel or value at a time
     def ch_out_vsearch = channel.empty()
-        .mix(
-            VSEARCH_FASTQMERGEPAIRS.out.reads,
-            VSEARCH_FASTQFILTER.out.reads,
-            VSEARCH_FASTQFILTER.out.filter_stats,
-            VSEARCH_DEREPFULLLENGTH.out.reads,
-            VSEARCH_DEREPFULLLENGTHALL.out.reads,
-            VSEARCH_DEREPFULLLENGTHALL.out.concatreads,
-            VSEARCH_CLUSTERUNOISE.out.asvs,
-            VSEARCH_SORT_REMOVE_SINGLETONS.out.asvs,
-            VSEARCH_UCHIMEDENOVO.out.asvs,
-            VSEARCH_UCHIMEDENOVO.out.chimeras,
-            VSEARCH_USEARCHGLOBAL.out.counts,
-            VSEARCH_USEARCHGLOBAL.out.mapping_stats,
-            VSEARCH_MAPPINGRATE.out.summary,
-            VSEARCH_MAPPINGRATE.out.overall
-        )
+        .mix(merged.map { _meta, f -> f })
+        .mix(filtered.reads.map { _meta, f -> f })
+        .mix(filtered.filter_stats.map { _meta, f -> f })
+        .mix(derep.map { _meta, f -> f })
+        .mix(derep_all.reads)
+        .mix(derep_all.concatreads)
+        .mix(clustered)
+        .mix(nonsingle)
+        .mix(nonchimeric.asvs)
+        .mix(nonchimeric.chimeras)
+        .mix(counts.counts)
+        .mix(counts.mapping_stats)
+        .mix(mappingrate.summary)
+        .mix(mappingrate.overall)
 
     //
     // MODULE: MAFFT multiple sequence alignment + FastTree
     //
-    def ch_tree          = channel.fromPath("${projectDir}/assets/NO_TREEFILE")
-    def ch_out_mafft     = channel.empty()
-    def ch_out_fasttree  = channel.empty()
-    if (!params.skip_tree) {
-        MAFFT (
-            VSEARCH_UCHIMEDENOVO.out.asvs
-        )
-        FASTTREE (
-            MAFFT.out.msa
-        )
-        ch_tree         = FASTTREE.out.tree
-        ch_out_mafft    = MAFFT.out.msa
-        ch_out_fasttree = FASTTREE.out.tree
+    def ch_tree         = channel.value(file("${projectDir}/assets/NO_TREEFILE"))
+    def ch_out_mafft    = channel.empty()
+    def ch_out_fasttree = channel.empty()
+    if (!opts.skip_tree) {
+        def msa  = MAFFT(ch_asvs)
+        def tree = FASTTREE(msa)
+        ch_tree         = tree
+        ch_out_mafft    = channel.empty().mix(msa)    // value -> channel, for publishing
+        ch_out_fasttree = channel.empty().mix(tree)
     }
 
     //
     // MODULE: Download SILVA if not supplied
     //
-    def ch_silva_asv_db     = channel.empty()
-    def ch_silva_species_db = channel.empty()
+    def ch_silva_asv_db     = channel.value(opts.silva_asv_db)
+    def ch_silva_species_db = channel.value(opts.silva_species_db)
     def ch_out_silva        = channel.empty()
-    if (params.silva_asv_db && params.silva_species_db) {
-        ch_silva_asv_db     = channel.fromPath(params.silva_asv_db, checkIfExists: true)
-        ch_silva_species_db = channel.fromPath(params.silva_species_db, checkIfExists: true)
-    } else {
-        SILVADATABASES()
-        ch_silva_asv_db     = SILVADATABASES.out.asvdb
-        ch_silva_species_db = SILVADATABASES.out.speciesdb
-        if (params.save_silva_db) {
-            ch_out_silva = SILVADATABASES.out.asvdb.mix(SILVADATABASES.out.speciesdb)
+    if (!opts.silva_asv_db || !opts.silva_species_db) {
+        def silva = SILVADATABASES()
+        ch_silva_asv_db     = silva.asvdb
+        ch_silva_species_db = silva.speciesdb
+        if (opts.save_silva_db) {
+            ch_out_silva = channel.empty().mix(silva.asvdb).mix(silva.speciesdb)
         }
     }
 
     //
     // MODULE: DADA2 Assign taxonomy with SILVA db
     //
-    DADA2_ASSIGNTAXONOMY (
-        VSEARCH_UCHIMEDENOVO.out.asvs,
+    def taxonomy = DADA2_ASSIGNTAXONOMY(
+        ch_asvs,
         ch_silva_asv_db,
         ch_silva_species_db,
-        params.dada2_minboot,
-        params.dada2_allowmultiple,
-        params.dada2_tryrevcompl
+        opts.dada2_minboot,
+        opts.dada2_allowmultiple,
+        opts.dada2_tryrevcompl
     )
 
     //
     // MODULE: PICRUST
     //
     def ch_out_picrust2 = channel.empty()
-    if (!params.skip_picrust) {
-        PICRUST2 (
-            VSEARCH_UCHIMEDENOVO.out.asvs,
-            VSEARCH_USEARCHGLOBAL.out.counts
-        )
-        ch_out_picrust2 = PICRUST2.out.outfolder
+    if (!opts.skip_picrust) {
+        def picrust = PICRUST2(ch_asvs, counts.counts)
+        ch_out_picrust2 = picrust.flatMap { files -> files }
     }
 
     //
     // MODULE: Make phyloseq object
     //
-    PHYLOSEQ_COMPLETE_MAKEOBJECT (
-        VSEARCH_UCHIMEDENOVO.out.asvs,
-        VSEARCH_USEARCHGLOBAL.out.counts,
+    def phyloseq = PHYLOSEQ_COMPLETE_MAKEOBJECT(
+        ch_asvs,
+        counts.counts,
         ch_tree,
-        DADA2_ASSIGNTAXONOMY.out.taxtable
+        taxonomy
     )
-
-    def ch_phyloseq = PHYLOSEQ_COMPLETE_MAKEOBJECT.out.phyloseq
-    def ch_out_phyloseq_complete = PHYLOSEQ_COMPLETE_MAKEOBJECT.out.phyloseq
-        .mix(PHYLOSEQ_COMPLETE_MAKEOBJECT.out.taxtable)
+    def ch_out_phyloseq_complete = channel.empty().mix(phyloseq.phyloseq).mix(phyloseq.taxtable)
 
     //
     // MODULE: Decontam (optional) — run before rarefaction
     //
-    def ch_phyloseq_for_rarefaction = ch_phyloseq
+    def ch_phyloseq_for_rarefaction = phyloseq.phyloseq
     def ch_out_phyloseq_decontam    = channel.empty()
-    if (params.run_decontam) {
-        PHYLOSEQ_DECONTAM (
-            ch_phyloseq,
-            file(params.input)
-        )
+    if (opts.run_decontam) {
+        def decontam = PHYLOSEQ_DECONTAM(phyloseq.phyloseq, opts.input)
         // Use decontam output as basis for rarefaction and downstream steps
-        ch_phyloseq_for_rarefaction = PHYLOSEQ_DECONTAM.out.phyloseq
-        ch_out_phyloseq_decontam    = PHYLOSEQ_DECONTAM.out.phyloseq
-            .mix(
-                PHYLOSEQ_DECONTAM.out.report,
-                PHYLOSEQ_DECONTAM.out.contaminants,
-                PHYLOSEQ_DECONTAM.out.prev_plot
-            )
+        ch_phyloseq_for_rarefaction = decontam.phyloseq
+        ch_out_phyloseq_decontam    = channel.empty()
+            .mix(decontam.phyloseq).mix(decontam.report).mix(decontam.contaminants).mix(decontam.prev_plot)
     }
 
     //
     // MODULE: Fix taxonomy + overview metrics (complete dataset)
     //
-    if (!params.skip_fixtaxonomy) {
-        PHYLOSEQ_COMPLETE_FIXTAX (
-            ch_phyloseq,
-            'complete'
-        )
-        ch_out_phyloseq_complete = ch_out_phyloseq_complete.mix(
-            PHYLOSEQ_COMPLETE_FIXTAX.out.taxonomy,
-            PHYLOSEQ_COMPLETE_FIXTAX.out.phylevels,
-            PHYLOSEQ_COMPLETE_FIXTAX.out.phylevelstop
-        )
+    if (!opts.skip_fixtaxonomy) {
+        def fixtax = PHYLOSEQ_COMPLETE_FIXTAX(phyloseq.phyloseq, 'complete')
+        ch_out_phyloseq_complete = ch_out_phyloseq_complete
+            .mix(fixtax.taxonomy).mix(fixtax.phylevels).mix(fixtax.phylevelstop)
 
-        if (!params.skip_metrics) {
-            PHYLOSEQ_COMPLETE_METRICS (
-                ch_phyloseq,
-                PHYLOSEQ_COMPLETE_FIXTAX.out.taxonomy,
-                'complete'
-            )
-            ch_out_phyloseq_complete = ch_out_phyloseq_complete.mix(
-                PHYLOSEQ_COMPLETE_METRICS.out.speciescomp,
-                PHYLOSEQ_COMPLETE_METRICS.out.genuscomp,
-                PHYLOSEQ_COMPLETE_METRICS.out.famcomp,
-                PHYLOSEQ_COMPLETE_METRICS.out.phylumcomp,
-                PHYLOSEQ_COMPLETE_METRICS.out.shannon,
-                PHYLOSEQ_COMPLETE_METRICS.out.richness,
-                PHYLOSEQ_COMPLETE_METRICS.out.metrics
-            )
+        if (!opts.skip_metrics) {
+            def metrics = PHYLOSEQ_COMPLETE_METRICS(phyloseq.phyloseq, fixtax.taxonomy, 'complete')
+            ch_out_phyloseq_complete = ch_out_phyloseq_complete
+                .mix(metrics.speciescomp).mix(metrics.genuscomp).mix(metrics.famcomp).mix(metrics.phylumcomp)
+                .mix(metrics.shannon).mix(metrics.richness).mix(metrics.metrics)
         }
     }
 
@@ -311,40 +300,20 @@ workflow VSEARCHPIPELINE {
     // MODULE: Rarefaction — uses decontam output if run_decontam, else complete phyloseq
     //
     def ch_out_phyloseq_rarefied = channel.empty()
-    if (!params.skip_rarefaction) {
-        PHYLOSEQ_RAREFIED (
-            ch_phyloseq_for_rarefaction,
-            params.rarelevel
-        )
-        ch_out_phyloseq_rarefied = PHYLOSEQ_RAREFIED.out.phyloseq
-            .mix(PHYLOSEQ_RAREFIED.out.rarecurve, PHYLOSEQ_RAREFIED.out.rarereport)
+    if (!opts.skip_rarefaction) {
+        def rarefied = PHYLOSEQ_RAREFIED(ch_phyloseq_for_rarefaction, opts.rarelevel)
+        ch_out_phyloseq_rarefied = channel.empty().mix(rarefied.phyloseq).mix(rarefied.rarecurve).mix(rarefied.rarereport)
 
-        if (!params.skip_fixtaxonomy) {
-            PHYLOSEQ_RAREFIED_FIXTAX (
-                PHYLOSEQ_RAREFIED.out.phyloseq,
-                'rarefied'
-            )
-            ch_out_phyloseq_rarefied = ch_out_phyloseq_rarefied.mix(
-                PHYLOSEQ_RAREFIED_FIXTAX.out.taxonomy,
-                PHYLOSEQ_RAREFIED_FIXTAX.out.phylevels,
-                PHYLOSEQ_RAREFIED_FIXTAX.out.phylevelstop
-            )
+        if (!opts.skip_fixtaxonomy) {
+            def fixtax_r = PHYLOSEQ_RAREFIED_FIXTAX(rarefied.phyloseq, 'rarefied')
+            ch_out_phyloseq_rarefied = ch_out_phyloseq_rarefied
+                .mix(fixtax_r.taxonomy).mix(fixtax_r.phylevels).mix(fixtax_r.phylevelstop)
 
-            if (!params.skip_metrics) {
-                PHYLOSEQ_RAREFIED_METRICS (
-                    PHYLOSEQ_RAREFIED.out.phyloseq,
-                    PHYLOSEQ_RAREFIED_FIXTAX.out.taxonomy,
-                    'rarefied'
-                )
-                ch_out_phyloseq_rarefied = ch_out_phyloseq_rarefied.mix(
-                    PHYLOSEQ_RAREFIED_METRICS.out.speciescomp,
-                    PHYLOSEQ_RAREFIED_METRICS.out.genuscomp,
-                    PHYLOSEQ_RAREFIED_METRICS.out.famcomp,
-                    PHYLOSEQ_RAREFIED_METRICS.out.phylumcomp,
-                    PHYLOSEQ_RAREFIED_METRICS.out.shannon,
-                    PHYLOSEQ_RAREFIED_METRICS.out.richness,
-                    PHYLOSEQ_RAREFIED_METRICS.out.metrics
-                )
+            if (!opts.skip_metrics) {
+                def metrics_r = PHYLOSEQ_RAREFIED_METRICS(rarefied.phyloseq, fixtax_r.taxonomy, 'rarefied')
+                ch_out_phyloseq_rarefied = ch_out_phyloseq_rarefied
+                    .mix(metrics_r.speciescomp).mix(metrics_r.genuscomp).mix(metrics_r.famcomp).mix(metrics_r.phylumcomp)
+                    .mix(metrics_r.shannon).mix(metrics_r.richness).mix(metrics_r.metrics)
             }
         }
     }
@@ -352,7 +321,7 @@ workflow VSEARCHPIPELINE {
     //
     // Record the pipeline git commit. Written by Nextflow itself: no task, container or git in a container needed.
     //
-    def ch_commit_hash = channel.value("""
+    def ch_commit_hash = channel.of("""
         You can obtain the exact version of the vsearchpipeline used for this run
         by cloning the repo and running the Git command:
 
@@ -364,10 +333,11 @@ workflow VSEARCHPIPELINE {
     // Collect software versions from the 'versions' topic channel.
     // Each entry is [ process, tool, version ]: the version is a string (eval) or a file (R templates).
     //
-    def ch_versions = channel.topic('versions')
+    def ch_versions_topic: Channel<Tuple> = channel.topic('versions')
+    def ch_versions = ch_versions_topic
         .map { process, tool, version ->
             def v = (version instanceof Path) ? version.text.trim() : version.toString().trim()
-            [ process.tokenize(':')[-1], tool, v ]
+            tuple(process.tokenize(':')[-1], tool, v)   // tuple(), not a list: the type checker then knows its 3 parts
         }
         .unique()
 
@@ -376,7 +346,7 @@ workflow VSEARCHPIPELINE {
         .map { process, tool, version -> "${process}\t${tool}\t${version}" }
         .collectFile(
             name: 'software_versions.tsv',
-            storeDir: "${params.outdir}/pipeline_info",
+            storeDir: "${opts.outdir}/pipeline_info",
             seed: "process\tsoftware\tversion",
             sort: true,
             newLine: true
@@ -385,13 +355,13 @@ workflow VSEARCHPIPELINE {
     // YAML grouped per process, as MultiQC's software versions section expects.
     // Map to strings *before* collectFile: given tuples, collectFile uses the first element as a file name.
     def ch_versions_yaml = ch_versions
-        .map { process, tool, version -> [ process, "    ${tool}: ${version}" ] }
-        .groupTuple()
-        .map { process, lines -> "${process}:\n${lines.sort().join('\n')}" }
+        .map { process, tool, version -> tuple(process, "    ${tool}: ${version}") }
+        .groupBy()
+        .map { process, lines -> "${process}:\n${lines.toSorted().join('\n')}" }
         .mix(channel.of(workflowVersionToYAML()))
         .collectFile(
             name: 'vsearchpipeline_software_mqc_versions.yml',
-            storeDir: "${params.outdir}/pipeline_info",
+            storeDir: "${opts.outdir}/pipeline_info",
             sort: true,
             newLine: true
         )
@@ -399,54 +369,48 @@ workflow VSEARCHPIPELINE {
     //
     // MODULE: MultiQC
     //
-    def ch_multiqc_custom_methods_description = params.multiqc_methods_description
-        ? file(params.multiqc_methods_description, checkIfExists: true)
-        : file("$projectDir/assets/methods_description_template.yml", checkIfExists: true)
+    def methods_description_template = opts.multiqc_methods_description
+        ? file(opts.multiqc_methods_description, checkIfExists: true)
+        : file("${projectDir}/assets/methods_description_template.yml", checkIfExists: true)
 
-    def workflow_summary    = paramsSummaryMultiqc(paramsSummaryMap())
-    def ch_workflow_summary = channel.value(workflow_summary).collectFile(name: 'workflow_summary_mqc.yaml')
+    def ch_workflow_summary = channel.of(paramsSummaryMultiqc(paramsSummaryMap()))
+        .collectFile(name: 'workflow_summary_mqc.yaml')
+    def ch_methods_description = channel.of(methodsDescriptionText(methods_description_template))
+        .collectFile(name: 'methods_description_mqc.yaml')
 
-    def methods_description = methodsDescriptionText(ch_multiqc_custom_methods_description)
-    def ch_methods_description = channel.value(methods_description).collectFile(name: 'methods_description_mqc.yaml')
-
-    def n_samples = ch_reads.count().map { n -> n * 2 }  // paired-end: 2 FastQC files per sample
-
-    n_samples.subscribe { n ->
-        if (n > 6000) {
-            log.warn "[vsearchpipeline] Skipping MultiQC: number of FastQC files (${n}) exceeds 6000."
+    // Skip MultiQC for very large runs (> 6000 FastQC reports): it becomes too slow to be useful
+    def ch_multiqc_input = channel.empty()
+        .mix(ch_workflow_summary)
+        .mix(ch_methods_description)
+        .mix(ch_versions_yaml)
+        .mix(fastqc_results.zip.flatMap { _meta, zips -> [ zips ].flatten() })   // one file (single-end) or a list
+        .collect()
+        .flatMap { files ->
+            def n_fastqc = files.findAll { f -> f.name.endsWith('_fastqc.zip') }.size()
+            if (n_fastqc > 6000) {
+                log.warn "[vsearchpipeline] Skipping MultiQC: number of FastQC files (${n_fastqc}) exceeds 6000."
+                return []
+            }
+            return [ tuple([id: 'multiqc'], files.toList(), [], [], [], []) ]
         }
-    }
 
-    def ch_multiqc_files = channel.empty()
-        .mix(
-            ch_workflow_summary,
-            ch_methods_description,
-            ch_versions_yaml,
-            FASTQC.out.zip.map { _meta, zips -> zips }.flatten()
-        )
-
-    def ch_multiqc_input = n_samples.filter { n -> n <= 6000 }
-        .map { n -> [ n ] }
-        .combine(ch_multiqc_files.collect().map { files -> [ files ] })
-        .map { _n, files -> [ [id: 'multiqc'], files, [], [], [], [] ] }
-
-    MULTIQC ( ch_multiqc_input )
+    def multiqc_results = MULTIQC(ch_multiqc_input)
 
     emit:
-    // One channel per results folder; the output block in main.nf decides where each goes
-    fastqc            = FASTQC.out.html.mix(FASTQC.out.zip)
-    seqtk             = ch_out_seqtk
-    vsearch           = ch_out_vsearch
-    mafft             = ch_out_mafft
-    fasttree          = ch_out_fasttree
-    silva_db          = ch_out_silva
-    dada2             = DADA2_ASSIGNTAXONOMY.out.taxtable
-    picrust2          = ch_out_picrust2
-    phyloseq_complete = ch_out_phyloseq_complete
-    phyloseq_decontam = ch_out_phyloseq_decontam
-    phyloseq_rarefied = ch_out_phyloseq_rarefied
-    multiqc           = MULTIQC.out.report.mix(MULTIQC.out.data, MULTIQC.out.plots)
-    pipeline_info     = ch_commit_hash
+    // One channel of files per results folder; the output block in main.nf decides where each goes
+    fastqc: Channel<Path>            = fastqc_results.html.mix(fastqc_results.zip).flatMap { _meta, files -> [ files ].flatten() }
+    seqtk: Channel<Path>             = ch_out_seqtk
+    vsearch: Channel<Path>           = ch_out_vsearch
+    mafft: Channel<Path>             = ch_out_mafft
+    fasttree: Channel<Path>          = ch_out_fasttree
+    silva_db: Channel<Path>          = ch_out_silva
+    dada2: Channel<Path>             = channel.empty().mix(taxonomy)
+    picrust2: Channel<Path>          = ch_out_picrust2
+    phyloseq_complete: Channel<Path> = ch_out_phyloseq_complete
+    phyloseq_decontam: Channel<Path> = ch_out_phyloseq_decontam
+    phyloseq_rarefied: Channel<Path> = ch_out_phyloseq_rarefied
+    multiqc: Channel<Path>           = multiqc_results.report.mix(multiqc_results.data).mix(multiqc_results.plots).map { _meta, f -> f }
+    pipeline_info: Channel<Path>     = ch_commit_hash
 }
 
 /*

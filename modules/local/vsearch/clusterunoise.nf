@@ -8,7 +8,7 @@ process VSEARCH_CLUSTERUNOISE {
     input:
     reads: Path
     minsize: Integer
-    alpha: Number
+    alpha: Float
 
     output:
     asvs = file("asvs.clustered.fasta")
