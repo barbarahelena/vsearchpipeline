@@ -3,9 +3,19 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## v2.0.0 - Oct 17 2026
 
 Strict syntax and static typing throughout. **Requires Nextflow 26.10.0 or later.**
+
+### Breaking changes
+
+- Nextflow 26.10.0 or later is required (was 25.10.3)
+- Misspelled or unknown parameters now stop the run instead of being ignored; values must have the declared type
+- `--max_cpus`, `--max_memory`, `--max_time` removed: set `process.resourceLimits` in a config file instead (see the usage docs)
+- `--hook_url` (Slack/Teams notifications) removed
+- Custom configs that set `publishDir` no longer have an effect: results are published through workflow outputs
+- Process names lost the `VSEARCHFLOW:` prefix (`VSEARCHPIPELINE:...`): update `withName:` selectors in custom configs, and expect `-resume` from a v1 run to rerun all tasks
+- Results on macOS without containers change, because primer trimming now actually runs there
 
 ### `Changed`
 
