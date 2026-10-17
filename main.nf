@@ -169,8 +169,11 @@ workflow {
         multiqc_methods_description: params.multiqc_methods_description
     )
 
+    // One Sample record per samplesheet row (see Sample in workflows/vsearchpipeline.nf)
+    def ch_samples = init.reads.map { meta, reads -> record(id: meta.id, single_end: meta.single_end, fastq: reads) }
+
     def pipeline = VSEARCHPIPELINE (
-        init.reads,
+        ch_samples,
         init.primers,
         opts
     )

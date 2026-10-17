@@ -20,6 +20,7 @@ Strict syntax and static typing throughout. **Requires Nextflow 26.10.0 or later
 ### `Changed`
 
 - Strict syntax everywhere (`nextflow lint` reports no errors); typed processes for all local modules; typed workflows for `main.nf` and `VSEARCHPIPELINE`
+- Samples are `Sample` records (`id`, `single_end`, `fastq`) instead of `meta` maps; per-sample steps take only the fields they need and return a record with the sample id and their files
 - All analysis parameters declared once, with types, in a `params` block in `main.nf`. Wrong types, misspelled parameters and missing input files now stop the run at launch
 - Parameter validation uses `nf-schema` 3.0.0 instead of the deprecated `nf-validation`; JSON schemas converted to draft 2020-12
 - nf-core utility subworkflows replaced by current versions, tracked in `modules.json`; nf-core FastQC (0.13.0) and MultiQC (1.35) modules updated

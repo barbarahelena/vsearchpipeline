@@ -46,6 +46,20 @@ include { MULTIQC         } from '../modules/nf-core/multiqc/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    SAMPLES
+    One record per samplesheet row. Per-sample steps take only the fields they need
+    and return a record with the sample id and their new file(s).
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+record Sample {
+    id: String
+    single_end: Boolean
+    fastq: List<Path>   // [ fastq_1, fastq_2 ]
+}
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     OPTIONS
     The parameters this workflow uses. main.nf passes `params`; only these fields are
     read, and each must have the declared type.
@@ -100,7 +114,7 @@ record VsearchOptions {
 workflow VSEARCHPIPELINE {
 
     take:
-    ch_reads: Channel<Tuple>   // [ meta, [ fastq_1, fastq_2 ] ]
+    ch_samples: Channel<Sample>
     ch_primers: Value<Map>     // [ forward: ..., reverse: ... ]; [:] when --skip_primers
     opts: VsearchOptions
 
@@ -108,17 +122,19 @@ workflow VSEARCHPIPELINE {
     //
     // MODULE: Run FastQC
     //
-    def fastqc_results = FASTQC(ch_reads)   // not 'fastqc': that is an emit name below
+    // nf-core FastQC is untyped and expects tuple(meta, reads)
+    def fastqc_results = FASTQC(ch_samples.map { s -> tuple([id: s.id, single_end: s.single_end], s.fastq) })   // not 'fastqc': an emit name below
 
     //
     // MODULE: Seqtk trim primers in fastq files
     //
-    def ch_trimmed_reads = ch_reads
+    // record(...) keeps the field types; subMap() would return an untyped Record
+    def ch_trimmed_reads = ch_samples.map { s -> record(id: s.id, fastq: s.fastq) }
     def ch_out_seqtk     = channel.empty()
     if (!opts.skip_primers) {
-        def trimmed = SEQTK_TRIMFQ(ch_reads, ch_primers)
+        def trimmed = SEQTK_TRIMFQ(ch_samples, ch_primers)
         ch_trimmed_reads = trimmed
-        ch_out_seqtk     = trimmed.flatMap { _meta, fastqs -> fastqs }
+        ch_out_seqtk     = trimmed.flatMap { r -> r.fastq }
     }
 
     //
@@ -140,7 +156,7 @@ workflow VSEARCHPIPELINE {
         opts.filter_maxns
     )
     def derep = VSEARCH_DEREPFULLLENGTH(
-        filtered.reads,
+        filtered,
         opts.derep_strand
     )
 
@@ -150,7 +166,7 @@ workflow VSEARCHPIPELINE {
     // Sort by file name so the input order (and so the ASV numbering) does not depend on which
     // task finished first. collect() returns an unordered Bag; toSorted gives an ordered List.
     def ch_derep_sorted = derep
-        .map { _meta, fasta -> fasta }
+        .map { r -> r.derep }
         .collect()
         .map { fastas -> fastas.toSorted { a, b -> a.name <=> b.name } }
     def derep_all = VSEARCH_DEREPFULLLENGTHALL(
@@ -186,15 +202,15 @@ workflow VSEARCHPIPELINE {
     def mappingrate = VSEARCH_MAPPINGRATE(
         counts.counts,
         counts.mapping_stats,
-        filtered.filter_stats.map { _meta, f -> f }.collect().map { files -> files.toList() }
+        filtered.map { r -> r.filter_stats }.collect().map { files -> files.toList() }
     )
 
     // mix() takes one channel or value at a time
     def ch_out_vsearch = channel.empty()
-        .mix(merged.map { _meta, f -> f })
-        .mix(filtered.reads.map { _meta, f -> f })
-        .mix(filtered.filter_stats.map { _meta, f -> f })
-        .mix(derep.map { _meta, f -> f })
+        .mix(merged.map { r -> r.merged })
+        .mix(filtered.map { r -> r.filtered })
+        .mix(filtered.map { r -> r.filter_stats })
+        .mix(derep.map { r -> r.derep })
         .mix(derep_all.reads)
         .mix(derep_all.concatreads)
         .mix(clustered)

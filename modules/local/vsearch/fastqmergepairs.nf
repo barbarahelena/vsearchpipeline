@@ -1,13 +1,13 @@
 nextflow.enable.types = true
 
 process VSEARCH_FASTQMERGEPAIRS {
-    tag meta.id
+    tag id
     label 'process_multi_low'
     label 'vsearch'
     label 'error_retry'
 
     input:
-    tuple(meta: Map, reads: List<Path>)   // [ forward, reverse ]
+    record(id: String, fastq: List<Path>)   // fastq: [ forward, reverse ]
     allowmergestagger: Boolean
     maxdiffs: Integer                     // 0 = vsearch default
     minlength: Integer                    // 0 = no minimum
@@ -15,14 +15,14 @@ process VSEARCH_FASTQMERGEPAIRS {
     maxdiffpct: Integer                   // 100 = vsearch default
 
     output:
-    reads = tuple(meta, file("*.merged.fastq.gz"))
+    sample = record(id: id, merged: file("*.merged.fastq.gz"))
 
     topic:
     tuple(task.process, 'vsearch', eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\'')) >> 'versions'
 
     script:
     def args                  = task.ext.args ?: ''
-    def prefix                = task.ext.prefix ?: "${meta.id}"
+    def prefix                = task.ext.prefix ?: id
     def allowmergestagger_arg = allowmergestagger ? "--fastq_allowmergestagger" : ''
     def maxdiffs_arg          = maxdiffs ? "--fastq_maxdiffs ${maxdiffs}" : ''
     def minmerge              = minlength != 0 ? "--fastq_minmergelen ${minlength}" : ''
@@ -30,8 +30,8 @@ process VSEARCH_FASTQMERGEPAIRS {
     def maxdiffpct_arg        = maxdiffpct != 100 ? "--fastq_maxdiffpct ${maxdiffpct}" : ''
     """
     vsearch \\
-        --fastq_mergepairs ${reads[0]} \\
-        --reverse ${reads[1]} \\
+        --fastq_mergepairs ${fastq[0]} \\
+        --reverse ${fastq[1]} \\
         ${maxdiffs_arg} \\
         ${allowmergestagger_arg} \\
         ${minmerge} \\
@@ -45,7 +45,7 @@ process VSEARCH_FASTQMERGEPAIRS {
     """
 
     stub:
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    def prefix = task.ext.prefix ?: id
     """
     touch ${prefix}.merged.fastq.gz
     """
