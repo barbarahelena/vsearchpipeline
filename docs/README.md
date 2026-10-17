@@ -9,4 +9,4 @@ The vsearchpipeline documentation is split into the following pages:
 - [Output](output.md)
   - An overview of the different results produced by the pipeline and how to interpret them.
 
-You can find a lot more documentation about installing, configuring and running nf-core pipelines on the website: [https://nf-co.re](https://nf-co.re)
+vsearchpipeline is built with nf-core components, so much of the general documentation about installing, configuring and running nf-core pipelines on [https://nf-co.re](https://nf-co.re) also applies.

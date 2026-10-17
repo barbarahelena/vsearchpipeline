@@ -68,6 +68,27 @@ All outputs are stored in subdirectories of the output directory. These director
 
 For more details on the pipeline output, please refer to the [output documentation](https://github.com/barbarahelena/vsearchpipeline/blob/master/docs/output.md).
 
+## Credits
+
+vsearchpipeline was written by Barbara Verhaar.
+
+This pipeline uses code and infrastructure developed and maintained by the [nf-core](https://nf-co.re) community, reused here under the [MIT license](https://github.com/nf-core/tools/blob/main/LICENSE):
+
+- the pipeline template structure (`main.nf`, `nextflow.config`, `conf/`, `assets/` e.g. email templates and the MultiQC methods description)
+- the nf-core modules [`fastqc`](https://nf-co.re/modules/fastqc) and [`multiqc`](https://nf-co.re/modules/multiqc)
+- the nf-core subworkflows `utils_nextflow_pipeline`, `utils_nfcore_pipeline` and `utils_nfschema_plugin`
+- [nf-core/tools](https://github.com/nf-core/tools) to install and update these components, and the [nf-schema](https://github.com/nextflow-io/nf-schema) plugin for parameter and samplesheet validation
+
+vsearchpipeline is not an official nf-core pipeline.
+
 ## Citations
 
 If you use this VSEARCH workflow for your analysis, please cite it using the following doi: [10.5281/zenodo.10076629](https://doi.org/10.5281/zenodo.10076629). An extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.
+
+This pipeline uses code developed and maintained by the nf-core community, which you can cite as follows:
+
+> **The nf-core framework for community-curated bioinformatics pipelines.**
+>
+> Philip Ewels, Alexander Peltzer, Sven Fillinger, Harshil Patel, Johannes Alneberg, Andreas Wilm, Maxime Ulysse Garcia, Paolo Di Tommaso & Sven Nahnsen.
+>
+> _Nat Biotechnol._ 2020 Feb 13. doi: [10.1038/s41587-020-0439-x](https://dx.doi.org/10.1038/s41587-020-0439-x).
