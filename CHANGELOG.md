@@ -24,6 +24,7 @@ Strict syntax and static typing throughout. **Requires Nextflow 26.10.0 or later
 - All analysis parameters declared once, with types, in a `params` block in `main.nf`. Wrong types, misspelled parameters and missing input files now stop the run at launch
 - Parameter validation uses `nf-schema` 3.0.0 instead of the deprecated `nf-validation`; JSON schemas converted to draft 2020-12
 - nf-core utility subworkflows replaced by current versions, tracked in `modules.json`; nf-core FastQC (0.13.0) and MultiQC (1.35) modules updated
+- VSEARCH updated to 2.32.0 (bug fixes; thread count now respects container/Slurm CPU limits; quality scores above 41 accepted). Results on the test data are unchanged
 - Results are published through workflow outputs (`output` block in `main.nf`) instead of `publishDir`; the results folder layout is unchanged
 - `--max_cpus`, `--max_memory`, `--max_time` replaced by `process.resourceLimits` (they were not enforced)
 - Tool versions collected from the `versions` topic channel; MultiQC now lists all tools (it previously showed only FastQC)
