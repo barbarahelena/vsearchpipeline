@@ -40,7 +40,7 @@ TREATMENT_REP3,AEG588A6_S6_L004_R1_001.fastq.gz,AEG588A6_S6_L004_R2_001.fastq.gz
 | `fastq_2` | Full path to FastQ file for Illumina short reads 2. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
 | `nucl_acid_conc` | _(Optional)_ DNA/RNA concentration of the sample (e.g. measured by Qubit). Required for frequency-based decontam. Leave empty for negative controls and samples without a measurement. |
 
-An [example samplesheet](../testdata/Samplesheet.csv) has been provided with the pipeline.
+An [example samplesheet](../assets/testdata/small/Samplesheet.csv) has been provided with the pipeline.
 
 ## Decontam
 
@@ -110,7 +110,7 @@ CCTACGGGAGGCAGCAG,TACNVGGGTATCTAAKCC
 | `forward_primer` | Sequence of the forward primer. All nucleotides and degenerate nucleotides are allowed characters. |
 | `reverse_primer` | Sequence of the reverse primer. All nucleotides and degenerate nucleotides are allowed characters. |
 
-An [example primersheet](../testdata/Primers.csv) has been provided with the pipeline.
+An [example primersheet](../assets/testdata/small/Primers.csv) has been provided with the pipeline.
 
 ## Running the pipeline
 
