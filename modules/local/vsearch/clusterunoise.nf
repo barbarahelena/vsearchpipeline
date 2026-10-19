@@ -1,33 +1,34 @@
+nextflow.enable.types = true
+
 process VSEARCH_CLUSTERUNOISE {
     label 'process_multi_verylow'
     label 'error_retry'
     label 'vsearch'
-    
+
     input:
-    path(reads)
-    val minsize
-    val alpha
+    reads: Path
+    minsize: Integer
+    alpha: Float
 
     output:
-    path "asvs.clustered.fasta"                                                                                           , emit: asvs
-    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed \'s/vsearch //; s/,.*//\''), emit: versions, topic: versions
+    asvs = file("asvs.clustered.fasta")
 
-    when:
-    task.ext.when == null || task.ext.when
+    topic:
+    tuple(task.process, 'vsearch', eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\'')) >> 'versions'
 
     script:
     def args = task.ext.args ?: ''
     """
     vsearch \\
-        --cluster_unoise $reads \\
+        --cluster_unoise ${reads} \\
         --centroids asvs.clustered.fasta \\
-        --minsize $minsize \\
-        --threads $task.cpus \\
-        --unoise_alpha $alpha
+        --minsize ${minsize} \\
+        --threads ${task.cpus} \\
+        ${args} \\
+        --unoise_alpha ${alpha}
     """
 
     stub:
-    def args = task.ext.args ?: ''
     """
     touch asvs.clustered.fasta
     """

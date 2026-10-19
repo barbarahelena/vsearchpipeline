@@ -1,25 +1,26 @@
+nextflow.enable.types = true
+
 process PHYLOSEQ_MAKEOBJECT {
     label 'process_multi_low'
     label 'phyloseq'
 
     input:
-    path asvs
-    path counttable
-    path tree
-    path taxtable
+    asvs: Path
+    counttable: Path
+    tree: Path       // assets/NO_TREEFILE when --skip_tree
+    taxtable: Path
 
     output:
-    path "phyloseq.RDS"             , emit: phyloseq
-    path "phylo_raw_taxtable.csv"   , emit: taxtable
-    tuple val("${task.process}"), val('r-base'),    path("version_r.txt"),          emit: versions_r,          topic: versions
-    tuple val("${task.process}"), val('phyloseq'),  path("version_phyloseq.txt"),   emit: versions_phyloseq,   topic: versions
-    tuple val("${task.process}"), val('Biostrings'),path("version_biostrings.txt"), emit: versions_biostrings, topic: versions
+    phyloseq = file("phyloseq.RDS")
+    taxtable = file("phylo_raw_taxtable.csv")
 
-    when:
-    task.ext.when == null || task.ext.when
+    topic:
+    // template scripts are R, not Bash, so they write version files instead of using eval()
+    tuple(task.process, 'r-base',     file("version_r.txt"))          >> 'versions'
+    tuple(task.process, 'phyloseq',   file("version_phyloseq.txt"))   >> 'versions'
+    tuple(task.process, 'Biostrings', file("version_biostrings.txt")) >> 'versions'
 
     script:
-    treepresent = tree.name != 'NO_TREEFILE' ? "TRUE" : "FALSE"
     template 'makeobject.R'
 
     stub:

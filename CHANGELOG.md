@@ -3,6 +3,51 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.0.0 - Oct 19 2026
+
+Strict syntax and static typing throughout. **Requires Nextflow 26.10.0 or later.**
+
+### Breaking changes
+
+- Nextflow 26.10.0 or later is required (was 25.10.3)
+- Misspelled or unknown parameters now stop the run instead of being ignored; values must have the declared type
+- `--max_cpus`, `--max_memory`, `--max_time` removed: set `process.resourceLimits` in a config file instead (see the usage docs)
+- `--hook_url` (Slack/Teams notifications) removed
+- Custom configs that set `publishDir` no longer have an effect: results are published through workflow outputs
+- Process names lost the `VSEARCHFLOW:` prefix (`VSEARCHPIPELINE:...`): update `withName:` selectors in custom configs, and expect `-resume` from a v1 run to rerun all tasks
+- Results on macOS without containers change, because primer trimming now actually runs there
+
+### `Changed`
+
+- Strict syntax everywhere (`nextflow lint` reports no errors); typed processes for all local modules; typed workflows for `main.nf` and `VSEARCHPIPELINE`
+- Samples are `Sample` records (`id`, `single_end`, `fastq`) instead of `meta` maps; per-sample steps take only the fields they need and return a record with the sample id and their files
+- All analysis parameters declared once, with types, in a `params` block in `main.nf`. Wrong types, misspelled parameters and missing input files now stop the run at launch
+- Parameter validation uses `nf-schema` 3.0.0 instead of the deprecated `nf-validation`; JSON schemas converted to draft 2020-12
+- nf-core utility subworkflows replaced by current versions, tracked in `modules.json`; nf-core FastQC (0.13.0) and MultiQC (1.35) modules updated
+- VSEARCH updated to 2.32.0 (bug fixes; thread count now respects container/Slurm CPU limits; quality scores above 41 accepted). Results on the test data are unchanged
+- Results are published through workflow outputs (`output` block in `main.nf`) instead of `publishDir`; the results folder layout is unchanged
+- `--max_cpus`, `--max_memory`, `--max_time` replaced by `process.resourceLimits` (they were not enforced)
+- Tool versions collected from the `versions` topic channel; MultiQC now lists all tools (it previously showed only FastQC)
+- `git_commit_hash.txt` written by Nextflow itself; no longer needs git inside a container
+- `task.ext.args` is now passed to every tool
+- The `arm` profile also builds conda environments for `osx-64`, so `-profile mamba,arm` works on Apple Silicon
+- nf-test suite (`tests/default.nf.test`): the test profile with checksums of the scientific results, and a stub run with all optional steps
+- CI: `nextflow lint` job, then nf-test on Nextflow 26.10.0 and latest stable
+
+### `Fixed`
+
+- Primer trimming was silently skipped on macOS without containers (`zcat` there only reads `.Z` files)
+- Boolean parameters set to `false` on the command line (e.g. `--skip_picrust false`) were treated as `true`
+- ASV numbering could differ between runs of the same data (per-sample files were concatenated in task finish order)
+- `--help` showed `cluster_minsize` default 8; the default used is 10
+- `*.merged.fastq.gz` files were not gzip-compressed
+- `ext.args` set in a config was ignored
+- Fasttree, seqtk and vsearch versions were recorded incorrectly; PICRUSt2 and dereplication stub blocks were broken
+
+### `Removed`
+
+- `--hook_url` (Slack/Teams notifications), dropped from the nf-core utilities
+
 ## v1.0.0 - Mar 18 2026
 
 ### `Added`

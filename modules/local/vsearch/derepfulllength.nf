@@ -1,38 +1,37 @@
+nextflow.enable.types = true
+
 process VSEARCH_DEREPFULLLENGTH {
-    tag "$meta.id"
+    tag id
     label 'process_single_low'
     label 'vsearch'
     label 'error_retry'
 
     input:
-    tuple val(meta), path(reads)
-    val strand
+    record(id: String, filtered: Path)
+    strand: String   // 'plus' or 'both'
 
     output:
-    tuple val(meta), path("*.derep.fasta")                                                                                , emit: reads
-    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed \'s/vsearch //; s/,.*//\''), emit: versions, topic: versions
+    sample = record(id: id, derep: file("*.derep.fasta"))
 
-    when:
-    task.ext.when == null || task.ext.when
+    topic:
+    tuple(task.process, 'vsearch', eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\'')) >> 'versions'
 
     script:
-    def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    def uniq = "${prefix}.derep.fasta"
+    def args   = task.ext.args ?: ''
+    def prefix = task.ext.prefix ?: id
     """
     vsearch \\
-        --fastx_uniques $reads \\
-        --fastaout $uniq \\
-        --strand $strand \\
+        --fastx_uniques ${filtered} \\
+        --fastaout ${prefix}.derep.fasta \\
+        --strand ${strand} \\
         --sizeout \\
-        --relabel $prefix.
+        ${args} \\
+        --relabel ${prefix}.
     """
 
     stub:
-    def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    def uniq = "${prefix}.derep.fastq"
+    def prefix = task.ext.prefix ?: id
     """
-    touch $uniq
+    touch ${prefix}.derep.fasta
     """
 }

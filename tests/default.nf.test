@@ -1,0 +1,71 @@
+nextflow_pipeline {
+
+    name "vsearchpipeline end-to-end"
+    script "../main.nf"
+    tag "pipeline"
+
+    // All output files, relative to the output directory, sorted. Run-specific
+    // files in pipeline_info (timestamped reports, params dump) are left out.
+    def outputFiles = { String dir ->
+        def root  = new File(dir).toPath()
+        def files = []
+        root.toFile().eachFileRecurse(groovy.io.FileType.FILES) { f ->
+            def rel = root.relativize(f.toPath()).toString()
+            if (!(rel ==~ /pipeline_info\/(execution_|pipeline_dag|params_).*/)) {
+                files << rel
+            }
+        }
+        return files.sort()
+    }
+
+    test("-profile test") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            // Scientific results are byte-identical between runs, conda and containers,
+            // macOS and Linux, so their checksums are part of the snapshot. Other files
+            // (gzip headers, PDFs, RDS, logs that mention the platform) by name only.
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot(
+                    outputFiles(params.outdir),
+                    path("${params.outdir}/vsearch/asvs_nonchimeras.fasta"),
+                    path("${params.outdir}/vsearch/count_table.txt"),
+                    path("${params.outdir}/vsearch/mapping_rate_summary.tsv"),
+                    path("${params.outdir}/vsearch/mapping_rate_overall.txt"),
+                    path("${params.outdir}/dada2/taxtable.csv"),
+                    path("${params.outdir}/phyloseq/complete/phylo_raw_taxtable.csv"),
+                    path("${params.outdir}/phyloseq/complete/phylogen_levels_complete.csv"),
+                    path("${params.outdir}/phyloseq/complete/phylogen_levels_top300_complete.csv"),
+                    path("${params.outdir}/phyloseq/rarefied/rarefaction_report.txt"),
+                    path("${params.outdir}/phyloseq/rarefied/phylogen_levels_rarefied.csv")
+                ).match() }
+            )
+        }
+    }
+
+    test("-profile test -stub, all optional steps") {
+
+        options "-stub"
+
+        when {
+            params {
+                outdir       = "$outputDir"
+                skip_picrust = false
+                run_decontam = true
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot(outputFiles(params.outdir)).match() }
+            )
+        }
+    }
+}

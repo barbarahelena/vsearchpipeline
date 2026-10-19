@@ -45,4 +45,4 @@ body:
         * Executor _(eg. slurm, local, awsbatch)_
         * Container engine: _(e.g. Docker, Singularity, Conda, Podman, Shifter, Charliecloud, or Apptainer)_
         * OS _(eg. CentOS Linux, macOS, Linux Mint)_
-        * Version of the vsearchpipeline _(eg. 1.0.0)_
+        * Version of the vsearchpipeline _(eg. 2.0.0)_

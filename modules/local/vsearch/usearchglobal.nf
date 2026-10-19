@@ -1,39 +1,37 @@
+nextflow.enable.types = true
+
 process VSEARCH_USEARCHGLOBAL {
     label 'process_highcpu'
     label 'error_retry'
     label 'vsearch'
 
     input:
-    path(allreads)
-    path(asvs)
-    val id
-    
-    output:
-    path "all.concat.fasta"                                                                                               , emit: concatfasta
-    path "count_table.txt"                                                                                                , emit: counts
-    path "mapping_stats.txt"                                                                                              , emit: mapping_stats
-    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed \'s/vsearch //; s/,.*//\''), emit: versions, topic: versions
+    allreads: Path   // all reads concatenated
+    asvs: Path
+    id: Float        // minimum identity, e.g. 0.97
 
-    when:
-    task.ext.when == null || task.ext.when
+    output:
+    counts        = file("count_table.txt")
+    mapping_stats = file("mapping_stats.txt")
+
+    topic:
+    tuple(task.process, 'vsearch', eval('vsearch --version 2>&1 | sed -nE \'1s/^vsearch v([0-9.]+).*/\\1/p\'')) >> 'versions'
 
     script:
     def args = task.ext.args ?: ''
-
-    """  
+    """
     vsearch \\
-        --usearch_global $allreads \\
-        --db $asvs \\
-        --id $id \\
-        --threads $task.cpus \\
+        --usearch_global ${allreads} \\
+        --db ${asvs} \\
+        --id ${id} \\
+        --threads ${task.cpus} \\
+        ${args} \\
         --otutabout count_table.txt \\
         2> mapping_stats.txt
     """
 
     stub:
-    def args = task.ext.args ?: ''
     """
-    touch all.concat.fasta
     touch count_table.txt
     touch mapping_stats.txt
     """

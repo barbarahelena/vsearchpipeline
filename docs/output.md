@@ -73,11 +73,16 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 <summary>Output files</summary>
 
 - `vsearch/`
+  - `<sample>.merged.fastq.gz`: Merged read pairs per sample.
+  - `<sample>.filtered.fastq`: Quality-filtered reads per sample.
+  - `<sample>.derep.fasta`: Dereplicated reads per sample.
+  - `all.concat.fasta`, `all.derep.fasta`: All samples' dereplicated reads, concatenated and dereplicated together.
   - `asvs.clustered.fasta`: ASVs resulting from `cluster_unoise3`.
   - `asvs_nonsingle.fasta`: ASVs after sorting and singleton removal.
   - `asvs_nonchimeras.fasta`: Final ASV set after `uchime3_denovo` chimera removal. ASVs are labelled `ASV_` followed by a number.
   - `chimeras.fasta`: Sequences identified as chimeras and removed.
   - `count_table.txt`: Per-sample ASV count table from `usearch_global`.
+  - `mapping_stats.txt`: `usearch_global` log with the overall mapping of unique sequences.
   - `*.filter_stats.txt`: Per-sample read filtering statistics from `fastq_filter`.
 
 </details>
@@ -85,10 +90,10 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 In a series of [VSEARCH](https://github.com/torognes/vsearch) processes, paired-end reads are converted into a final ASV set and count table:
 
 1. **Merge** — `fastq_mergepairs` merges forward and reverse reads per sample.
-2. **Filter** — `fastq_filter` filters merged reads (default: `maxee=1`, `maxns=1`).
+2. **Filter** — `fastq_filter` filters merged reads (default: `maxee=1`, no limit on Ns).
 3. **Dereplicate per sample** — `fastq_uniques` dereplicates reads within each sample.
-4. **Dereplicate all** — all per-sample dereplicated reads are concatenated and dereplicated again (default: `minunique=2`).
-5. **Cluster** — `cluster_unoise3` denoises sequences into ASVs (default: `minsize=8`, `alpha=2`).
+4. **Dereplicate all** — all per-sample dereplicated reads are concatenated (in sample-name order, so ASV numbering is reproducible) and dereplicated again (default: `minunique=2`).
+5. **Cluster** — `cluster_unoise3` denoises sequences into ASVs (default: `minsize=10`, `alpha=2`).
 6. **Sort & remove singletons** — `sortbysize` sorts ASVs and removes singletons (default: `minsize=2`).
 7. **Chimera removal** — `uchime3_denovo` removes chimeric sequences using the UNOISE3 algorithm.
 8. **Count table** — `usearch_global` maps the concatenated dereplicated reads back to the final ASVs to produce the count table.
@@ -286,12 +291,14 @@ Rarefaction subsamples all samples to an equal sequencing depth. The rarefaction
 <summary>Output files</summary>
 
 - `pipeline_info/`
-  - `execution_report.html`: Nextflow execution report with per-process resource usage.
-  - `execution_timeline.html`: Timeline of process execution.
-  - `execution_trace.txt`: Detailed trace of all tasks.
-  - `pipeline_dag.dot` / `pipeline_dag.svg`: Directed acyclic graph of the workflow.
+  - `execution_report_<date>.html`: Nextflow execution report with per-process resource usage.
+  - `execution_timeline_<date>.html`: Timeline of process execution.
+  - `execution_trace_<date>.txt`: Detailed trace of all tasks.
+  - `pipeline_dag_<date>.html`: Directed acyclic graph of the workflow.
+  - `params_<date>.json`: All parameter values used for the run.
   - `software_versions.tsv`: Tab-separated table of all software versions used (`process`, `software`, `version`).
-  - `git_commit_hash.txt`: Git commit hash of the exact pipeline version used, for full reproducibility.
+  - `vsearchpipeline_software_mqc_versions.yml`: The same versions grouped per process, as shown in the MultiQC report.
+  - `git_commit_hash.txt`: Git commit of the exact pipeline version used, for full reproducibility (`unknown` if the pipeline was not run from a git checkout).
 
 </details>
 
